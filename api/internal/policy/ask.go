@@ -2,8 +2,11 @@ package policy
 
 import (
 	"cmp"
+	"crypto/sha256"
+	"encoding/hex"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/HannesT117/johannestrepesch.de/api/internal/content"
@@ -15,6 +18,9 @@ const (
 	FactThreshold = 0.5
 	MaxFacts      = 4
 	maxAnswerLen  = 600
+
+	GroundingThreshold = 0.7
+	groundedID         = "grounded"
 )
 
 type Selection struct {
@@ -67,35 +73,30 @@ func Select(c content.Content, ev model.Evaluation) (Selection, bool) {
 	return Selection{Topic: c.Topics[i], Facts: facts}, true
 }
 
-func ParseKey(c content.Content, key string) (Selection, bool) {
-	topicID, factIDs, ok := strings.Cut(key, ":")
-	i := slices.IndexFunc(c.Topics, func(t content.Topic) bool { return t.ID == topicID })
-	if !ok || i < 0 || factIDs == "" {
-		return Selection{}, false
-	}
-	ids := strings.Split(factIDs, ",")
-	if len(ids) > MaxFacts {
-		return Selection{}, false
-	}
-	allowed := c.FactsFor(topicID)
-	sel := Selection{Topic: c.Topics[i]}
-	for _, id := range ids {
-		j := slices.IndexFunc(allowed, func(f content.Fact) bool { return f.ID == id })
-		if j < 0 || slices.ContainsFunc(sel.Facts, func(f content.Fact) bool { return f.ID == id }) {
-			return Selection{}, false
-		}
-		sel.Facts = append(sel.Facts, allowed[j])
-	}
-	return sel, true
+func AnswerID(sel Selection, question string) string {
+	sum := sha256.Sum256([]byte(sel.Key() + "\n" + strings.Join(strings.Fields(strings.ToLower(question)), " ")))
+	return hex.EncodeToString(sum[:16])
 }
 
-func Prompt(c content.Content, sel Selection) (system, user string) {
+func Prompt(c content.Content, sel Selection, question string) (system, user string) {
+	return c.ComposeInstructions, "Question: " + strconv.Quote(question) + "\n" + factSheet(sel)
+}
+
+func GroundingCheck(c content.Content, sel Selection, answer string) (state string, nouls []model.Option) {
+	return factSheet(sel) + "Answer: " + answer, []model.Option{{ID: groundedID, Text: c.GroundingQuestion}}
+}
+
+func Grounded(scores map[string]float64) bool {
+	return scores[groundedID] >= GroundingThreshold
+}
+
+func factSheet(sel Selection) string {
 	var b strings.Builder
 	b.WriteString("Topic: " + sel.Topic.Intent + "\nFacts:\n")
 	for _, f := range sel.Facts {
 		b.WriteString("- " + f.Text + "\n")
 	}
-	return c.ComposeInstructions, b.String()
+	return b.String()
 }
 
 var (

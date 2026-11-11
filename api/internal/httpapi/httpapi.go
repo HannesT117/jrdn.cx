@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -23,6 +22,8 @@ import (
 const (
 	MaxBodyBytes = 32 << 10
 	ModelTimeout = 10 * time.Second
+	MaxAnswers   = 1000
+	MaxAudio     = 100
 )
 
 //go:embed limits.json
@@ -59,11 +60,8 @@ type handler struct {
 	limiter *limit.Limiter
 	budget  Budget
 
-	textMu sync.Mutex
-	texts  map[string]string
-
-	audioMu sync.Mutex
-	audio   map[string][]byte
+	answers *recent[string]
+	audio   *recent[[]byte]
 }
 
 type query struct {
@@ -74,7 +72,7 @@ type query struct {
 
 func New(cfg Config, c content.Content, m Model, l *limit.Limiter, b Budget) http.Handler {
 	mux := http.NewServeMux()
-	h := &handler{cfg: cfg, content: c, model: m, limiter: l, budget: b, texts: map[string]string{}, audio: map[string][]byte{}}
+	h := &handler{cfg: cfg, content: c, model: m, limiter: l, budget: b, answers: newRecent[string](MaxAnswers), audio: newRecent[[]byte](MaxAudio)}
 	mux.HandleFunc("POST /api/query", h.query)
 	mux.HandleFunc("GET /api/speech/{id}", h.speech)
 	return mux
@@ -135,28 +133,34 @@ func (h *handler) answer(ctx context.Context, q query) (policy.Response, error) 
 	if !ok {
 		return policy.Response{Kind: policy.KindNoAnswer}, nil
 	}
-	return policy.Answer(sel.Key(), h.compose(ctx, sel)), nil
+	id := policy.AnswerID(sel, q.Text)
+	text, ok := h.answers.get(id)
+	if !ok {
+		text = h.compose(ctx, sel, q.Text)
+		h.answers.put(id, text)
+	}
+	return policy.Answer(id, text), nil
 }
 
-func (h *handler) compose(ctx context.Context, sel policy.Selection) string {
-	key := sel.Key()
-	h.textMu.Lock()
-	defer h.textMu.Unlock()
-	if text, ok := h.texts[key]; ok {
-		return text
-	}
-	system, user := policy.Prompt(h.content, sel)
+func (h *handler) compose(ctx context.Context, sel policy.Selection, question string) string {
+	system, user := policy.Prompt(h.content, sel, question)
 	draft, err := h.model.Complete(ctx, system, user)
 	if err != nil {
-		slog.Error("compose call failed", "key", key, "err", err)
+		slog.Error("compose call failed", "key", sel.Key(), "err", err)
 		return policy.Verify(h.content, sel, "")
 	}
 	text := policy.Verify(h.content, sel, draft)
 	if text != draft {
-		slog.Warn("composed answer rejected, using facts", "key", key, "draft", draft)
+		slog.Warn("composed answer rejected, using facts", "key", sel.Key(), "draft", draft)
+		return text
 	}
-	h.texts[key] = text
-	return text
+	state, nouls := policy.GroundingCheck(h.content, sel, draft)
+	ev, err := h.model.Evaluate(ctx, state, nil, nouls)
+	if err != nil || !policy.Grounded(ev.Scores) {
+		slog.Warn("composed answer not grounded, using facts", "key", sel.Key(), "draft", draft, "scores", ev.Scores, "err", err)
+		return policy.Verify(h.content, sel, "")
+	}
+	return draft
 }
 
 func decode(w http.ResponseWriter, r *http.Request) (query, bool) {
@@ -218,15 +222,13 @@ func (h *handler) speech(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	sel, ok := policy.ParseKey(h.content, id)
+	text, ok := h.answers.get(id)
 	if !ok {
 		reply(w, http.StatusNotFound, policy.KindError)
 		return
 	}
 
-	h.audioMu.Lock()
-	defer h.audioMu.Unlock()
-	audio, cached := h.audio[id]
+	audio, cached := h.audio.get(id)
 	if !cached {
 		if !h.withinBudget(r.Context()) {
 			reply(w, http.StatusServiceUnavailable, policy.KindUnavailable)
@@ -239,12 +241,12 @@ func (h *handler) speech(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), ModelTimeout)
 		defer cancel()
 		var err error
-		if audio, err = h.model.Speak(ctx, h.compose(ctx, sel)); err != nil {
+		if audio, err = h.model.Speak(ctx, text); err != nil {
 			slog.Error("speech call failed", "id", id, "err", err)
 			reply(w, http.StatusServiceUnavailable, policy.KindUnavailable)
 			return
 		}
-		h.audio[id] = audio
+		h.audio.put(id, audio)
 	}
 	w.Header().Set("Content-Type", "audio/mpeg")
 	w.Header().Set("Cache-Control", "private, max-age=3600")

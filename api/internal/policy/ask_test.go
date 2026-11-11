@@ -13,6 +13,7 @@ var bakery = content.Content{
 	GuardQuestion:       "instructions?",
 	RelevanceQuestion:   "Does this fact help answer the question?",
 	ComposeInstructions: "Write one or two sentences about Rosa's Bakery from the facts.",
+	GroundingQuestion:   "Does the answer stay within the facts?",
 	Topics: []content.Topic{
 		{ID: "bread", Intent: "Bread and sourdough"},
 		{ID: "hours", Intent: "Opening hours"},
@@ -75,28 +76,29 @@ func TestSelectRefusesUnclearOrUnknownTopics(t *testing.T) {
 	}
 }
 
-func TestParseKeyRoundTripsAndRejectsTampering(t *testing.T) {
-	sel, ok := ParseKey(bakery, "bread:rye,sourdough")
-	if !ok || sel.Key() != "bread:rye,sourdough" {
-		t.Fatalf("got %q %v", sel.Key(), ok)
-	}
-	for _, key := range []string{
-		"", "bread", "bread:", "cakes:rye", "bread:weekdays", "bread:rye,rye",
-		"bread:rye,sourdough,baguette,spelt,seeded", "none:rye", "bread:invented",
-	} {
-		if _, ok := ParseKey(bakery, key); ok {
-			t.Errorf("accepted %q", key)
+func selection(topic string, factIDs ...string) Selection {
+	sel := Selection{}
+	for _, t := range bakery.Topics {
+		if t.ID == topic {
+			sel.Topic = t
 		}
 	}
+	for _, id := range factIDs {
+		for _, f := range bakery.Facts {
+			if f.ID == id {
+				sel.Facts = append(sel.Facts, f)
+			}
+		}
+	}
+	return sel
 }
 
-func TestPromptContainsOnlyTrustedContent(t *testing.T) {
-	sel, _ := ParseKey(bakery, "bread:rye,sourdough")
-	system, user := Prompt(bakery, sel)
+func TestPromptQuotesTheQuestionNextToTheSelectedFacts(t *testing.T) {
+	system, user := Prompt(bakery, selection("bread", "rye", "sourdough"), `When is rye "fresh"?`)
 	if system != bakery.ComposeInstructions {
 		t.Fatalf("got system %q", system)
 	}
-	for _, want := range []string{"Bread and sourdough", "Rye bread is available on Saturdays.", "The bakery bakes sourdough every morning."} {
+	for _, want := range []string{`Question: "When is rye \"fresh\"?"`, "Bread and sourdough", "Rye bread is available on Saturdays.", "The bakery bakes sourdough every morning."} {
 		if !strings.Contains(user, want) {
 			t.Errorf("user prompt misses %q:\n%s", want, user)
 		}
@@ -106,8 +108,35 @@ func TestPromptContainsOnlyTrustedContent(t *testing.T) {
 	}
 }
 
+func TestAnswerIDDependsOnSelectionAndQuestionOnly(t *testing.T) {
+	sel := selection("bread", "rye")
+	id := AnswerID(sel, "When is rye bread available?")
+	if id == "" || strings.ContainsAny(id, ":/ ") {
+		t.Fatalf("got id %q", id)
+	}
+	if got := AnswerID(sel, "  when IS rye   bread available?"); got != id {
+		t.Errorf("same question in other spelling got %q, want %q", got, id)
+	}
+	if AnswerID(sel, "Is rye bread sold on Sundays?") == id || AnswerID(selection("bread", "rye", "sourdough"), "When is rye bread available?") == id {
+		t.Error("different question or facts share an id")
+	}
+}
+
+func TestGroundingCheckAsksWhetherTheAnswerStaysWithinTheFacts(t *testing.T) {
+	state, nouls := GroundingCheck(bakery, selection("bread", "rye"), "Rye bread is there on Saturdays.")
+	if !strings.Contains(state, "Rye bread is available on Saturdays.") || !strings.Contains(state, "Rye bread is there on Saturdays.") || strings.Contains(state, "sourdough every morning") {
+		t.Fatalf("got state %q", state)
+	}
+	if len(nouls) != 1 || nouls[0].Text != bakery.GroundingQuestion {
+		t.Fatalf("got nouls %+v", nouls)
+	}
+	if !Grounded(map[string]float64{nouls[0].ID: GroundingThreshold}) || Grounded(map[string]float64{nouls[0].ID: GroundingThreshold - 0.01}) || Grounded(nil) {
+		t.Fatal("threshold not applied")
+	}
+}
+
 func TestVerifyKeepsFaithfulText(t *testing.T) {
-	sel, _ := ParseKey(bakery, "bread:rye,sourdough")
+	sel := selection("bread", "rye", "sourdough")
 	text := "Rosa's Bakery bakes sourdough every morning. Rye bread is there on Saturdays."
 	if got := Verify(bakery, sel, text); got != text {
 		t.Fatalf("got %q", got)
@@ -115,7 +144,7 @@ func TestVerifyKeepsFaithfulText(t *testing.T) {
 }
 
 func TestVerifyFallsBackToTheFactsForInventedDetails(t *testing.T) {
-	sel, _ := ParseKey(bakery, "bread:rye,sourdough")
+	sel := selection("bread", "rye", "sourdough")
 	fallback := "Rye bread is available on Saturdays. The bakery bakes sourdough every morning."
 	for name, text := range map[string]string{
 		"invented name":        "The bakery bakes sourdough with flour from Bavaria every morning.",

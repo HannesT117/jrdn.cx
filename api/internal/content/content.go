@@ -36,6 +36,7 @@ type Content struct {
 	GuardQuestion       string      `json:"guardQuestion"`
 	RelevanceQuestion   string      `json:"relevanceQuestion"`
 	ComposeInstructions string      `json:"composeInstructions"`
+	GroundingQuestion   string      `json:"groundingQuestion"`
 	Topics              []Topic     `json:"topics"`
 	Facts               []Fact      `json:"facts"`
 	Strengths           []Criterion `json:"strengths"`
@@ -75,8 +76,8 @@ func (c Content) FactsFor(topic string) []Fact {
 }
 
 func (c Content) validate() error {
-	if c.NoneIntent == "" || c.GuardQuestion == "" || c.RelevanceQuestion == "" || c.ComposeInstructions == "" || len(c.Topics) == 0 || len(c.Facts) == 0 || len(c.Strengths) == 0 {
-		return errors.New("content needs a none intent, guard, relevance and compose texts, topics, facts and strengths")
+	if c.NoneIntent == "" || c.GuardQuestion == "" || c.RelevanceQuestion == "" || c.ComposeInstructions == "" || c.GroundingQuestion == "" || len(c.Topics) == 0 || len(c.Facts) == 0 || len(c.Strengths) == 0 {
+		return errors.New("content needs a none intent, guard, relevance, compose and grounding texts, topics, facts and strengths")
 	}
 	topicIDs := map[string]bool{NoneID: true}
 	for _, t := range c.Topics {

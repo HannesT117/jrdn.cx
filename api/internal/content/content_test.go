@@ -35,14 +35,15 @@ func TestFactsForTopicKeepsContentOrder(t *testing.T) {
 }
 
 func TestParseRejectsInvalidContent(t *testing.T) {
-	const texts = `"relevanceQuestion":"r","composeInstructions":"c",`
+	const texts = `"relevanceQuestion":"r","composeInstructions":"c","groundingQuestion":"gq",`
 	const head = `"noneIntent":"n","guardQuestion":"g",` + texts
 	const strengths = `"strengths":[{"id":"s","label":"l","question":"q"}]`
 	const topics = `"topics":[{"id":"bread","intent":"bread"}]`
 	const facts = `"facts":[{"id":"f1","topics":["bread"],"text":"Sourdough."}]`
 	cases := map[string]string{
-		"no relevance":       `{"noneIntent":"n","guardQuestion":"g","composeInstructions":"c",` + topics + `,` + facts + `,` + strengths + `}`,
-		"no compose":         `{"noneIntent":"n","guardQuestion":"g","relevanceQuestion":"r",` + topics + `,` + facts + `,` + strengths + `}`,
+		"no relevance":       `{"noneIntent":"n","guardQuestion":"g","composeInstructions":"c","groundingQuestion":"gq",` + topics + `,` + facts + `,` + strengths + `}`,
+		"no compose":         `{"noneIntent":"n","guardQuestion":"g","relevanceQuestion":"r","groundingQuestion":"gq",` + topics + `,` + facts + `,` + strengths + `}`,
+		"no grounding":       `{"noneIntent":"n","guardQuestion":"g","relevanceQuestion":"r","composeInstructions":"c",` + topics + `,` + facts + `,` + strengths + `}`,
 		"no none intent":     `{"guardQuestion":"g",` + texts + topics + `,` + facts + `,` + strengths + `}`,
 		"no guard":           `{"noneIntent":"n",` + texts + topics + `,` + facts + `,` + strengths + `}`,
 		"no topics":          `{` + head + `"topics":[],` + facts + `,` + strengths + `}`,
