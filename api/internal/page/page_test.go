@@ -177,6 +177,24 @@ func TestSportTimelineCoversFourSydneyDays(t *testing.T) {
 	)
 }
 
+func TestSportStateFollowsTheTimeSinceTheLastActivity(t *testing.T) {
+	for _, tc := range []struct {
+		hours int
+		want  string
+	}{
+		{1, `<p class="state s-peak">peak load · last activity 1h ago</p>`},
+		{2, `<p class="state s-ok">operational · last activity 2h ago</p>`},
+		{35, `<p class="state s-ok">operational · last activity 35h ago</p>`},
+		{36, `<p class="state s-maint">scheduled maintenance · last activity 36h ago</p>`},
+		{71, `<p class="state s-maint">scheduled maintenance · last activity 71h ago</p>`},
+		{72, `<p class="state s-down">outage · last activity 72h ago</p>`},
+	} {
+		end := now.Add(-time.Duration(tc.hours) * time.Hour)
+		out := render(t, Data{ActivityKnown: true, Activities: []garmin.Activity{{Kind: "run", Start: end.Add(-30 * time.Minute).UTC(), Minutes: 30}}})
+		has(t, out, tc.want)
+	}
+}
+
 func TestSportStateWhenNothingHappened(t *testing.T) {
 	out := render(t, Data{ActivityKnown: true})
 	has(t, out, `<p class="state s-down">outage · nothing in 4 days</p>`, `aria-label="No activity in the last 4 days"`)

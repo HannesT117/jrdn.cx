@@ -54,8 +54,9 @@
     }
 }
 
+.s-peak { --state: var(--a2); }
 .s-ok { --state: var(--ok); }
-.s-warn { --state: oklch(0.78 0.16 75); }
+.s-maint { --state: var(--a1); }
 .s-down { --state: oklch(0.62 0.21 25); }
 
 .track {

@@ -272,13 +272,15 @@ func track(acts []garmin.Activity, now time.Time, zone *time.Location) timeline 
 	}
 	ago := int(math.Round(max(0, now.Sub(last).Hours())))
 	switch {
-	case ago < 24:
-		t.Level = "ok"
+	case ago < 2:
+		t.Level = "peak"
 	case ago < 36:
-		t.Level = "warn"
+		t.Level = "ok"
+	case ago < 72:
+		t.Level = "maint"
 	default:
 		t.Level = "down"
 	}
-	t.State = fmt.Sprintf("%s · last activity %dh ago", map[string]string{"ok": "operational", "warn": "degraded", "down": "outage"}[t.Level], ago)
+	t.State = fmt.Sprintf("%s · last activity %dh ago", map[string]string{"peak": "peak load", "ok": "operational", "maint": "scheduled maintenance", "down": "outage"}[t.Level], ago)
 	return t
 }
