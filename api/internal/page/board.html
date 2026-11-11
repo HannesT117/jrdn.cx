@@ -55,7 +55,7 @@
     {{with .Stages}}<div>
         <h3 class="sub">On stage so far</h3>
         <p class="tally">{{$.Tally}}</p>
-        <ol class="stages">{{range .}}<li><span><b>{{.Title}}</b>{{with .Place}}, {{.}}{{end}}</span> <small>{{if .Year}}{{.Year}}{{end}}</small>{{with .With}} <small class="with">{{.}}</small>{{end}}</li> {{end}}</ol>
+        <ol class="stages">{{range .}}<li><span><b>{{.Title}}</b>{{with .Place}}, {{.}}{{end}}</span> <small>{{if .Ongoing}}since {{end}}{{if .Year}}{{.Year}}{{end}}</small>{{with .With}} <small class="with">{{.}}</small>{{end}}</li> {{end}}</ol>
     </div>{{end}}
     {{with .Countries}}<div>
         <h3 class="sub">Also sung in</h3>

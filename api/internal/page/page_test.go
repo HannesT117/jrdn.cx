@@ -124,7 +124,7 @@ func TestReadingShowsBooksHistoryAndPodcasts(t *testing.T) {
 func TestMusicShowsStagesSortedCountriesKitAndGigs(t *testing.T) {
 	out := render(t, Data{Extras: extras.Extras{
 		Concerts:  120,
-		Stages:    []extras.Stage{{Year: 2012, Title: "Evening of motets", Place: "Harbour Hall", With: "Lantern Singers"}, {Title: "Bike tour"}},
+		Stages:    []extras.Stage{{Year: 2012, Title: "Evening of motets", Place: "Harbour Hall", With: "Lantern Singers"}, {Title: "Bike tour"}, {Year: 2021, Ongoing: true, Title: "Touring choir", Place: "North Coast"}},
 		Countries: []string{"Portugal", "Estonia"},
 		Music:     []extras.Item{{Kind: "voice", Name: "Bass"}},
 		Gigs:      []extras.Gig{{Date: "2031-05-01", Program: "Spring Mass", Choir: "Rosa Singers", Place: "St Ann"}},
@@ -133,6 +133,7 @@ func TestMusicShowsStagesSortedCountriesKitAndGigs(t *testing.T) {
 		`<p class="tally">Around 120 concerts. A few of them:</p>`,
 		`<span><b>Evening of motets</b>, Harbour Hall</span> <small>2012</small> <small class="with">Lantern Singers</small>`,
 		`<span><b>Bike tour</b></span> <small></small>`,
+		`<span><b>Touring choir</b>, North Coast</span> <small>since 2021</small>`,
 		`<li>Estonia</li> <li>Portugal</li>`,
 		`<dt>voice</dt> <dd>Bass</dd>`,
 		`<time datetime="2031-05-01"><b>1</b>May</time>`,

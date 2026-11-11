@@ -69,10 +69,11 @@ type Piece struct {
 }
 
 type Stage struct {
-	Year  int    `json:"year,omitempty"`
-	Title string `json:"title"`
-	Place string `json:"place,omitempty"`
-	With  string `json:"with,omitempty"`
+	Year    int    `json:"year,omitempty"`
+	Ongoing bool   `json:"ongoing,omitempty"`
+	Title   string `json:"title"`
+	Place   string `json:"place,omitempty"`
+	With    string `json:"with,omitempty"`
 }
 
 type Extras struct {
@@ -201,6 +202,9 @@ func (e Extras) validate() error {
 		}
 		if err := errors.Join(checkText(st.Place), checkText(st.With)); err != nil {
 			return fmt.Errorf("stage %q: %w", st.Title, err)
+		}
+		if st.Ongoing && st.Year == 0 {
+			return fmt.Errorf("stage %q: ongoing needs the year it started", st.Title)
 		}
 		if st.Year != 0 && (st.Year < firstYear || st.Year > lastYear) {
 			return fmt.Errorf("stage %q: year %d is outside %d to %d", st.Title, st.Year, firstYear, lastYear)

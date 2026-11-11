@@ -169,7 +169,7 @@ func TestStagesKeepHighlightsPlacesAndACount(t *testing.T) {
 		"concerts": 120,
 		"stages": [
 			{"year":2019,"title":"Evening of motets","place":"Harbour Hall","with":"Lantern Singers"},
-			{"title":"Singing on a bike tour"}
+			{"title":"Singing on a bike tour","year":2021,"ongoing":true}
 		],
 		"countries": ["Tallinn", "Porto"]
 	}`
@@ -178,7 +178,7 @@ func TestStagesKeepHighlightsPlacesAndACount(t *testing.T) {
 	}
 	got, err := Load(path)
 	want := Stage{Year: 2019, Title: "Evening of motets", Place: "Harbour Hall", With: "Lantern Singers"}
-	if err != nil || got.Concerts != 120 || len(got.Stages) != 2 || got.Stages[0] != want || got.Stages[1].Year != 0 || got.Countries[1] != "Porto" {
+	if err != nil || got.Concerts != 120 || len(got.Stages) != 2 || got.Stages[0] != want || !got.Stages[1].Ongoing || got.Countries[1] != "Porto" {
 		t.Fatalf("got %+v, %v", got, err)
 	}
 	if empty, _ := Load(filepath.Join(t.TempDir(), "missing.json")); empty.Stages == nil || empty.Countries == nil {
@@ -188,10 +188,11 @@ func TestStagesKeepHighlightsPlacesAndACount(t *testing.T) {
 
 func TestLoadRejectsInvalidStages(t *testing.T) {
 	for name, raw := range map[string]string{
-		"no title":       `{"stages":[{"year":2019,"place":"Harbour Hall"}]}`,
-		"year too early": `{"stages":[{"year":200,"title":"Motets"}]}`,
-		"blank country":  `{"countries":[" "]}`,
-		"negative count": `{"concerts":-1}`,
+		"no title":        `{"stages":[{"year":2019,"place":"Harbour Hall"}]}`,
+		"ongoing no year": `{"stages":[{"title":"Motets","ongoing":true}]}`,
+		"year too early":  `{"stages":[{"year":200,"title":"Motets"}]}`,
+		"blank country":   `{"countries":[" "]}`,
+		"negative count":  `{"concerts":-1}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "extras.json")
