@@ -77,14 +77,14 @@ func TestEvaluateSendsChoiceAndNoulQuestionsInOneCall(t *testing.T) {
 	}
 }
 
-func TestEvaluateReturnsThePick(t *testing.T) {
+func TestEvaluateReturnsTheTopicDistribution(t *testing.T) {
 	c := fakeOpper(t, http.StatusOK, fixture(t, "choice.json"), nil, nil)
 	got, err := c.Evaluate(context.Background(), "Do you bake bread?", []Option{{ID: "bread", Text: "Bread"}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Pick.ID != "bread" || got.Pick.P != 0.97697844944979 {
-		t.Fatalf("got %+v", got.Pick)
+	if got.Topics["bread"] != 0.97697844944979 || got.Topics["none"] != 0.0015393182043068028 || len(got.Topics) != 11 {
+		t.Fatalf("got %v", got.Topics)
 	}
 }
 

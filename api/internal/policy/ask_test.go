@@ -17,6 +17,8 @@ var bakery = content.Content{
 	Topics: []content.Topic{
 		{ID: "bread", Intent: "Bread and sourdough"},
 		{ID: "hours", Intent: "Opening hours"},
+		{ID: "coffee", Intent: "Coffee"},
+		{ID: "pastry", Intent: "Pastries"},
 	},
 	Facts: []content.Fact{
 		{ID: "sourdough", Topics: []string{"bread"}, Text: "The bakery bakes sourdough every morning."},
@@ -25,12 +27,14 @@ var bakery = content.Content{
 		{ID: "spelt", Topics: []string{"bread"}, Text: "Spelt loaves come out at nine."},
 		{ID: "seeded", Topics: []string{"bread"}, Text: "Seeded loaves sell out by noon."},
 		{ID: "weekdays", Topics: []string{"hours"}, Text: "The bakery opens at seven on weekdays."},
+		{ID: "espresso", Topics: []string{"coffee"}, Text: "Espresso comes from a lever machine."},
+		{ID: "croissant", Topics: []string{"pastry"}, Text: "Croissants are baked with French butter."},
 	},
 	Strengths: []content.Criterion{{ID: "cakes", Label: "Cakes", Question: "cakes?"}},
 }
 
-func evaluation(topic string, p float64, scores map[string]float64) model.Evaluation {
-	return model.Evaluation{Pick: model.Pick{ID: topic, P: p}, Scores: scores}
+func evaluation(topics, scores map[string]float64) model.Evaluation {
+	return model.Evaluation{Topics: topics, Scores: scores}
 }
 
 func TestAskQuestionsOfferTopicsPlusNoneAndEveryFact(t *testing.T) {
@@ -44,7 +48,7 @@ func TestAskQuestionsOfferTopicsPlusNoneAndEveryFact(t *testing.T) {
 }
 
 func TestSelectPicksTheMostRelevantFactsOfTheTopic(t *testing.T) {
-	sel, ok := Select(bakery, evaluation("bread", 0.9, map[string]float64{
+	sel, ok := Select(bakery, evaluation(map[string]float64{"bread": 0.9, content.NoneID: 0.01}, map[string]float64{
 		"sourdough": 0.7, "rye": 0.95, "baguette": 0.2, "spelt": 0.8, "seeded": 0.6, "weekdays": 0.99,
 	}))
 	if !ok {
@@ -56,21 +60,43 @@ func TestSelectPicksTheMostRelevantFactsOfTheTopic(t *testing.T) {
 }
 
 func TestSelectFallsBackToTheBestFactWhenNoneIsClearlyRelevant(t *testing.T) {
-	sel, ok := Select(bakery, evaluation("hours", 0.8, map[string]float64{"weekdays": 0.1}))
+	sel, ok := Select(bakery, evaluation(map[string]float64{"hours": 0.8}, map[string]float64{"weekdays": 0.1}))
 	if !ok || sel.Key() != "hours:weekdays" {
 		t.Fatalf("got %q %v", sel.Key(), ok)
 	}
 }
 
-func TestSelectRefusesUnclearOrUnknownTopics(t *testing.T) {
-	for name, ev := range map[string]model.Evaluation{
-		"none":            evaluation(content.NoneID, 0.99, nil),
-		"unknown":         evaluation("cakes", 0.99, nil),
-		"below threshold": evaluation("bread", AskThreshold-0.01, nil),
+func TestSelectCombinesTopicsUntilTheyCoverTheQuestion(t *testing.T) {
+	sel, ok := Select(bakery, evaluation(
+		map[string]float64{"bread": 0.45, "hours": 0.3, "coffee": 0.15, content.NoneID: 0.02},
+		map[string]float64{"weekdays": 0.9, "rye": 0.8, "sourdough": 0.3, "espresso": 0.99},
+	))
+	if !ok || sel.Key() != "bread+hours:weekdays,rye" {
+		t.Fatalf("got %q %v", sel.Key(), ok)
+	}
+}
+
+func TestSelectTakesAtMostMaxTopics(t *testing.T) {
+	sel, ok := Select(bakery, evaluation(
+		map[string]float64{"bread": 0.21, "hours": 0.2, "coffee": 0.19, "pastry": 0.18, content.NoneID: 0.02},
+		map[string]float64{"rye": 0.9, "weekdays": 0.9, "espresso": 0.9, "croissant": 0.9},
+	))
+	if !ok || len(sel.Topics) != MaxTopics || strings.Contains(sel.Key(), "croissant") {
+		t.Fatalf("got %q %v", sel.Key(), ok)
+	}
+}
+
+func TestSelectRefusesOffTopicDiffuseOrUnknownQuestions(t *testing.T) {
+	for name, topics := range map[string]map[string]float64{
+		"none wins":       {content.NoneID: 0.9, "bread": 0.05},
+		"none too likely": {"bread": 0.55, content.NoneID: NoneCeiling},
+		"diffuse":         {"bread": 0.15, "hours": 0.15, "coffee": 0.15, "pastry": 0.15, content.NoneID: 0.1},
+		"unknown topic":   {"cakes": 0.99},
+		"no distribution": nil,
 	} {
 		t.Run(name, func(t *testing.T) {
-			if _, ok := Select(bakery, ev); ok {
-				t.Fatal("expected no selection")
+			if sel, ok := Select(bakery, evaluation(topics, map[string]float64{"rye": 0.9})); ok {
+				t.Fatalf("expected no selection, got %q", sel.Key())
 			}
 		})
 	}
@@ -80,7 +106,7 @@ func selection(topic string, factIDs ...string) Selection {
 	sel := Selection{}
 	for _, t := range bakery.Topics {
 		if t.ID == topic {
-			sel.Topic = t
+			sel.Topics = append(sel.Topics, t)
 		}
 	}
 	for _, id := range factIDs {

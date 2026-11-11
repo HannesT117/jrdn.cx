@@ -14,9 +14,12 @@ import (
 )
 
 const (
+	NoneCeiling   = 0.2
+	CoverTopics   = 0.7
 	AskThreshold  = 0.5
+	MaxTopics     = 3
 	FactThreshold = 0.5
-	MaxFacts      = 4
+	MaxFacts      = 5
 	maxAnswerLen  = 600
 
 	GroundingThreshold = 0.7
@@ -24,16 +27,20 @@ const (
 )
 
 type Selection struct {
-	Topic content.Topic
-	Facts []content.Fact
+	Topics []content.Topic
+	Facts  []content.Fact
 }
 
 func (s Selection) Key() string {
-	ids := make([]string, len(s.Facts))
-	for i, f := range s.Facts {
-		ids[i] = f.ID
+	topics := make([]string, len(s.Topics))
+	for i, t := range s.Topics {
+		topics[i] = t.ID
 	}
-	return s.Topic.ID + ":" + strings.Join(ids, ",")
+	facts := make([]string, len(s.Facts))
+	for i, f := range s.Facts {
+		facts[i] = f.ID
+	}
+	return strings.Join(topics, "+") + ":" + strings.Join(facts, ",")
 }
 
 func Answer(key, text string) Response {
@@ -52,25 +59,40 @@ func AskQuestions(c content.Content) (choice, nouls []model.Option) {
 }
 
 func Select(c content.Content, ev model.Evaluation) (Selection, bool) {
-	if ev.Pick.P < AskThreshold {
+	if ev.Topics[content.NoneID] >= NoneCeiling {
 		return Selection{}, false
 	}
-	i := slices.IndexFunc(c.Topics, func(t content.Topic) bool { return t.ID == ev.Pick.ID })
-	if i < 0 {
+	ranked := slices.Clone(c.Topics)
+	slices.SortStableFunc(ranked, func(a, b content.Topic) int { return cmp.Compare(ev.Topics[b.ID], ev.Topics[a.ID]) })
+	var sel Selection
+	covered := 0.0
+	for _, t := range ranked[:min(MaxTopics, len(ranked))] {
+		if covered >= CoverTopics || ev.Topics[t.ID] == 0 {
+			break
+		}
+		sel.Topics = append(sel.Topics, t)
+		covered += ev.Topics[t.ID]
+	}
+	if covered < AskThreshold {
 		return Selection{}, false
 	}
-	candidates := c.FactsFor(ev.Pick.ID)
-	slices.SortStableFunc(candidates, func(a, b content.Fact) int { return cmp.Compare(ev.Scores[b.ID], ev.Scores[a.ID]) })
-	var facts []content.Fact
-	for _, f := range candidates {
-		if len(facts) < MaxFacts && ev.Scores[f.ID] >= FactThreshold {
-			facts = append(facts, f)
+
+	var candidates []content.Fact
+	for _, f := range c.Facts {
+		if slices.ContainsFunc(sel.Topics, func(t content.Topic) bool { return slices.Contains(f.Topics, t.ID) }) {
+			candidates = append(candidates, f)
 		}
 	}
-	if len(facts) == 0 {
-		facts = candidates[:1]
+	slices.SortStableFunc(candidates, func(a, b content.Fact) int { return cmp.Compare(ev.Scores[b.ID], ev.Scores[a.ID]) })
+	for _, f := range candidates {
+		if len(sel.Facts) < MaxFacts && ev.Scores[f.ID] >= FactThreshold {
+			sel.Facts = append(sel.Facts, f)
+		}
 	}
-	return Selection{Topic: c.Topics[i], Facts: facts}, true
+	if len(sel.Facts) == 0 {
+		sel.Facts = candidates[:1]
+	}
+	return sel, true
 }
 
 func AnswerID(sel Selection, question string) string {
@@ -92,7 +114,11 @@ func Grounded(scores map[string]float64) bool {
 
 func factSheet(sel Selection) string {
 	var b strings.Builder
-	b.WriteString("Topic: " + sel.Topic.Intent + "\nFacts:\n")
+	b.WriteString("Topics:\n")
+	for _, t := range sel.Topics {
+		b.WriteString("- " + t.Intent + "\n")
+	}
+	b.WriteString("Facts:\n")
 	for _, f := range sel.Facts {
 		b.WriteString("- " + f.Text + "\n")
 	}
@@ -120,7 +146,10 @@ func Verify(c content.Content, sel Selection, text string) string {
 
 func trusted(c content.Content, sel Selection) map[string]bool {
 	words := map[string]bool{}
-	sources := []string{c.ComposeInstructions, sel.Topic.Intent}
+	sources := []string{c.ComposeInstructions}
+	for _, t := range sel.Topics {
+		sources = append(sources, t.Intent)
+	}
 	for _, f := range sel.Facts {
 		sources = append(sources, f.Text)
 	}

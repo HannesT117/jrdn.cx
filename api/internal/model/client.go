@@ -71,7 +71,7 @@ type response struct {
 }
 
 type Evaluation struct {
-	Pick   Pick
+	Topics map[string]float64
 	Scores map[string]float64
 }
 
@@ -95,10 +95,10 @@ func (c *Client) Evaluate(ctx context.Context, state string, choice []Option, no
 	var ev Evaluation
 	if len(choice) > 0 {
 		a, ok := res.Answers[choiceQuestion]
-		if !ok || a.Choice == "" {
+		if !ok || len(a.Probabilities) == 0 {
 			return Evaluation{}, fmt.Errorf("model response has no choice")
 		}
-		ev.Pick = Pick{ID: a.Choice, P: a.Probabilities[a.Choice]}
+		ev.Topics = a.Probabilities
 	}
 	ev.Scores = make(map[string]float64, len(nouls))
 	for _, q := range nouls {

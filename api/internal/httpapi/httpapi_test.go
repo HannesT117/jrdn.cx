@@ -17,7 +17,7 @@ import (
 )
 
 type fakeModel struct {
-	pick          model.Pick
+	topics        map[string]float64
 	scores        map[string]float64
 	err           error
 	calls         int
@@ -55,7 +55,7 @@ func (f *fakeModel) Evaluate(_ context.Context, state string, _, nouls []model.O
 	}
 	f.calls++
 	f.state = state
-	return model.Evaluation{Pick: f.pick, Scores: f.scores}, f.err
+	return model.Evaluation{Topics: f.topics, Scores: f.scores}, f.err
 }
 
 var testContent = content.Content{
@@ -89,7 +89,7 @@ func (f *fakeBudget) Allow(context.Context, time.Time) error {
 func newSetup() *setup {
 	return &setup{
 		cfg:     Config{Enabled: true, Origins: []string{"https://example.com"}},
-		model:   &fakeModel{pick: model.Pick{ID: "bread", P: 0.9}, scores: map[string]float64{"sourdough": 0.9}, completion: "Rosa's Bakery has fresh sourdough every morning.", grounded: 0.9},
+		model:   &fakeModel{topics: map[string]float64{"bread": 0.9}, scores: map[string]float64{"sourdough": 0.9}, completion: "Rosa's Bakery has fresh sourdough every morning.", grounded: 0.9},
 		limiter: limit.New([]byte("secret"), 100, 100),
 	}
 }
@@ -401,7 +401,7 @@ func TestAskFallsBackToTheFactsWhenComposingFailsOrInvents(t *testing.T) {
 
 func TestAskWithoutAClearTopicSkipsComposing(t *testing.T) {
 	s := newSetup()
-	s.model.pick = model.Pick{ID: content.NoneID, P: 0.95}
+	s.model.topics = map[string]float64{content.NoneID: 0.95}
 	_, res := s.do(t, http.MethodPost, `{"mode":"ask","text":"pizza?"}`)
 	if res.Kind != policy.KindNoAnswer || s.model.completeCalls != 0 {
 		t.Fatalf("got %+v after %d compose calls", res, s.model.completeCalls)
