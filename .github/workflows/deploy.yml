@@ -58,6 +58,7 @@ jobs:
           OPPER_API_KEY: ${{ secrets.OPPER_API_KEY }}
           GARMIN_API_KEY: ${{ secrets.GARMIN_API_KEY }}
           API_ENABLED: ${{ vars.API_ENABLED }}
+          ALLOWED_ORIGINS: ${{ vars.ALLOWED_ORIGINS || 'https://johannestrepesch.de,https://www.johannestrepesch.de,https://jrdn.cx,https://www.jrdn.cx,https://trepesch.dev,https://www.trepesch.dev' }}
           CLIENT_IP_HEADER: ${{ vars.CLIENT_IP_HEADER }}
           DAILY_CAP_PER_CLIENT: ${{ vars.DAILY_CAP_PER_CLIENT }}
           DAILY_CAP_GLOBAL: ${{ vars.DAILY_CAP_GLOBAL }}
@@ -72,7 +73,7 @@ jobs:
           {
             put ENABLED "$enabled"
             put PORT "$API_PORT"
-            put ALLOWED_ORIGINS "https://johannestrepesch.de,https://www.johannestrepesch.de"
+            put ALLOWED_ORIGINS "$ALLOWED_ORIGINS"
             put OPPER_API_KEY "$OPPER_API_KEY"
             put HMAC_SECRET "$(openssl rand -hex 32)"
             put GARMIN_API_KEY "$GARMIN_API_KEY"

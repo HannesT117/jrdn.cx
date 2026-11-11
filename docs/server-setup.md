@@ -17,6 +17,7 @@ Settings → Secrets and variables → Actions.
 | Variable (optional) | Purpose |
 |---|---|
 | `API_ENABLED` | `false` switches the query box off without removing secrets |
+| `ALLOWED_ORIGINS` | Comma-separated origins the query box accepts. Defaults to `johannestrepesch.de`, `jrdn.cx` and `trepesch.dev`, each with and without `www` |
 | `CLIENT_IP_HEADER` | Header in which Uberspace's proxy passes the visitor's IP. Without it every visitor counts against the same per-client cap |
 | `DAILY_CAP_PER_CLIENT`, `DAILY_CAP_GLOBAL` | Model calls per visitor and in total per day (defaults 20 and 300) |
 
