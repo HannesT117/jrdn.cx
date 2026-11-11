@@ -9,5 +9,14 @@ Redirect 302 /github https://github.com/HannesT117
   ExpiresActive on
   # Set the default expiry times.
   ExpiresDefault "access plus 6 months"
-  ExpiresByType text/html "access plus 1 day"
+  ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header always set Content-Security-Policy "default-src 'self'; child-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
 </IfModule>

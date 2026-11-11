@@ -1,0 +1,41 @@
+{
+  "model": "clef",
+  "answers": {
+    "q_l_noodles": {
+      "type": "noul",
+      "noul": 0.0143370304240108
+    },
+    "q_l_sushi": {
+      "type": "noul",
+      "noul": 0.6397360587186955
+    },
+    "q_s_parking": {
+      "type": "noul",
+      "noul": 0.019946934427410523
+    },
+    "q_s_coffee": {
+      "type": "noul",
+      "noul": 0.9554024237726139
+    },
+    "q_s_loaves": {
+      "type": "noul",
+      "noul": 0.9731387971923422
+    },
+    "q_s_vegan": {
+      "type": "noul",
+      "noul": 0.7669924765752232
+    },
+    "q_s_catering": {
+      "type": "noul",
+      "noul": 0.9507321642405272
+    },
+    "q_s_cakes": {
+      "type": "noul",
+      "noul": 0.940078594487036
+    }
+  },
+  "usage": {
+    "input_tokens": 832,
+    "output_tokens": 0
+  }
+}

@@ -1,0 +1,224 @@
+@media (prefers-reduced-motion: no-preference) {
+    .hero h1 {
+        animation: enter 0.9s 0.1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+
+    .hero > p:not(.status) {
+        animation: enter 0.9s 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+
+    .status i::after {
+        animation: ping 1.5s ease-out 3;
+    }
+
+    .node:hover::before {
+        animation: orbit 3s linear infinite;
+    }
+
+    .route li:last-child::after {
+        animation: ping-ring 1.5s ease-out 3;
+    }
+
+    [data-state="loading"] .packet {
+        animation: var(--travel) 0.9s ease-in infinite;
+
+        &:nth-child(2) {
+            animation-delay: 0.15s;
+        }
+
+        &:nth-child(3) {
+            animation-delay: 0.3s;
+        }
+    }
+
+    [data-state="loading"] :is(.q-fit, .q-down) .packet {
+        animation-delay: 0.45s;
+
+        &:nth-child(2) {
+            animation-delay: 0.6s;
+        }
+
+        &:nth-child(3) {
+            animation-delay: 0.75s;
+        }
+    }
+
+    [data-state="loading"] .q-out .packet {
+        animation-delay: 0.9s;
+
+        &:nth-child(2) {
+            animation-delay: 1.05s;
+        }
+
+        &:nth-child(3) {
+            animation-delay: 1.2s;
+        }
+    }
+
+    .result > * {
+        animation: rise 0.4s both;
+    }
+
+
+    .go {
+        transition: filter 0.2s, translate 0.2s;
+
+        &:hover {
+            translate: 0 -1px;
+        }
+    }
+
+    @supports (animation-timeline: view()) {
+        .node {
+            animation: appear linear both;
+            animation-timeline: view();
+            animation-range: entry 0% entry 40%;
+        }
+
+        .wire::after {
+            animation: light-down linear both;
+            animation-timeline: view();
+            animation-range: entry 30% exit 30%;
+        }
+
+        .stops {
+            &::before {
+                animation: grow-x linear both;
+                animation-timeline: view();
+                animation-range: entry 20% cover 45%;
+            }
+
+            & > li {
+                animation: pop-in linear both;
+                animation-timeline: view();
+
+                &:nth-child(1) { animation-range: entry 20% cover 28%; }
+                &:nth-child(2) { animation-range: entry 25% cover 34%; }
+                &:nth-child(3) { animation-range: entry 30% cover 40%; }
+                &:nth-child(4) { animation-range: entry 35% cover 45%; }
+                &:nth-child(5) { animation-range: entry 40% cover 50%; }
+            }
+        }
+
+        .loop {
+            view-timeline: --loop block;
+
+            & > li::after {
+                animation: step linear both;
+                animation-timeline: --loop;
+            }
+
+            & > li:nth-child(1)::after { animation-range: contain 0% contain 20%; }
+            & > li:nth-child(2)::after { animation-range: contain 20% contain 40%; }
+            & > li:nth-child(3)::after { animation-range: contain 40% contain 60%; }
+            & > li:nth-child(4)::after { animation-range: contain 60% contain 80%; }
+            & > li:nth-child(5)::after { animation-range: contain 80% contain 100%; }
+        }
+    }
+}
+
+@keyframes enter {
+    from {
+        opacity: 0;
+        translate: 0 1rem;
+    }
+}
+
+@keyframes ping {
+    from {
+        opacity: 0.7;
+        scale: 1;
+    }
+    to {
+        opacity: 0;
+        scale: 3;
+    }
+}
+
+@keyframes ping-ring {
+    50% {
+        scale: 1.25;
+    }
+}
+
+@keyframes orbit {
+    to {
+        --angle: 360deg;
+    }
+}
+
+@keyframes appear {
+    from {
+        opacity: 0;
+        translate: 0 1.5rem;
+        scale: 0.97;
+    }
+}
+
+@keyframes light-down {
+    from {
+        translate: 0 -100%;
+        opacity: 0;
+    }
+    30%,
+    70% {
+        opacity: 1;
+    }
+    to {
+        translate: 0 100%;
+        opacity: 0;
+    }
+}
+
+@keyframes grow-x {
+    from {
+        scale: 0 1;
+    }
+}
+
+@keyframes pop-in {
+    from {
+        opacity: 0;
+        scale: 0.6;
+    }
+}
+
+@keyframes step {
+    0%,
+    100% {
+        opacity: 0;
+    }
+    30%,
+    70% {
+        opacity: 1;
+    }
+}
+
+@keyframes travel {
+    from {
+        opacity: 1;
+        translate: 0 0;
+    }
+    to {
+        opacity: 1;
+        translate: calc(100cqi - 7px) 0;
+    }
+}
+
+@keyframes travel-down {
+    from {
+        opacity: 1;
+        translate: 0 0;
+    }
+    to {
+        opacity: 1;
+        translate: 0 calc(100cqb - 7px);
+    }
+}
+
+@keyframes rise {
+    from {
+        opacity: 0;
+        translate: 0 0.4rem;
+    }
+}

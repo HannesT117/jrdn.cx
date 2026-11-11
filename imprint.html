@@ -1,68 +1,55 @@
-<html>
+<!doctype html>
+<html lang="en">
     <head>
-        <title>trepesch.dev</title>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Imprint &amp; privacy · Johannes Jordan</title>
         <meta name="author" content="Johannes Jordan" />
-        <meta name="description" content="Lead Software Engineer" />
+        <meta name="description" content="Imprint and privacy policy of johannestrepesch.de" />
         <meta name="robots" content="index,nofollow" />
-        <meta
-            http-equiv="Content-Security-Policy"
-            content="default-src 'self'; child-src 'none';"
-        />
+        <meta name="color-scheme" content="light dark" />
         <link rel="icon" href="./assets/img/favicon.png" />
-        <link rel="stylesheet" href="./style.css" />
+        <link rel="stylesheet" href="./src/main.css" />
     </head>
 
     <body>
-        <main>
-            <section class="imprint">
-                <h1>Imprint</h1>
+        <main class="wrap legal">
+            <section class="node" aria-labelledby="imprint-h">
+                <h1 id="imprint-h">Imprint</h1>
                 <p>Johannes Jordan</p>
-                <p>
-                    <a href="mailto:web+imprint@trepesch.dev"
-                        >web+imprint@trepesch.dev</a
-                    >
-                </p>
+                <p><a href="mailto:web+imprint@trepesch.dev">web+imprint@trepesch.dev</a></p>
             </section>
-            <section>
-                <h1>Privacy Policy</h1>
-                <p>
-                    There is no use of tracking and analysis tools, cookies, or
-                    social network plugins.
-                </p>
+
+            <section class="node" id="privacy" aria-labelledby="privacy-h">
+                <h1 id="privacy-h">Privacy policy</h1>
+                <p>There is no use of tracking and analysis tools, cookies, or social network plugins.</p>
                 <p>
                     Server logs are
-                    <a
-                        href="https://manual.uberspace.de/web-logs.html"
-                        target="_blank"
-                        rel="noreferrer"
-                        >disabled by default</a
-                    >. Because
-                    <a
-                        href="http://www.uberspace.de/"
-                        target="_blank"
-                        rel="noreferrer"
-                        >uberspace</a
-                    >
-                    is awesome.
+                    <a href="https://manual.uberspace.de/web-logs.html">disabled by default</a>. Because
+                    <a href="https://uberspace.de/">uberspace</a> is awesome.
+                </p>
+                <h2>Query box</h2>
+                <p>
+                    When you send a question or a role description, the text goes to
+                    <a href="https://opper.ai">Opper</a>, which forwards it to the Clef model on
+                    an EU server operated by Melious (Finland) with zero data retention. Opper may keep request traces
+                    for operating its service.
+                </p>
+                <p>
+                    To phrase an answer, only my own facts, never your input, go through Opper to Mistral's Mistral Small
+                    language model in the EU. "Read aloud" sends that answer to Mistral's Voxtral speech model, also in
+                    the EU.
+                </p>
+                <p>
+                    To limit abuse, this site counts requests per visitor for one day. It stores only a keyed hash of
+                    your IP address in memory, never the address itself or your text, and forgets it after the day ends.
                 </p>
             </section>
+
+            <p class="legal-footer">
+                <a href="https://uberspace.de"><img src="./assets/img/uberspace.png" alt="Hosted on uberspace" /></a>
+                <a href="./index.html">Back to the homepage</a>
+            </p>
         </main>
-        <footer>
-            <section class="uberspace-is-awesome">
-                <a
-                    href="https://uberspace.de"
-                    target="_blank"
-                    alt="uberspace.de"
-                    rel="noreferrer"
-                >
-                    <img src="assets/img/uberspace.png" alt="uberspace logo"
-                /></a>
-            </section>
-            <section>
-                <a href="./index.html">Back</a>
-            </section>
-        </footer>
     </body>
 </html>

@@ -1,0 +1,347 @@
+.flow {
+    display: grid;
+    grid-template-columns: 1.3fr 3.5rem 1fr 3.5rem 1.4fr;
+    grid-template-rows: auto 2rem auto;
+    grid-template-areas:
+        "input in   clef fit  output"
+        "input .    down .    output"
+        "input .    llm  out  output";
+    margin-top: 1.5rem;
+
+    @media (scripting: none) {
+        display: none;
+    }
+
+    @container node (width < 44rem) {
+        grid-template-columns: 1fr 2.5rem 1fr;
+        grid-template-rows: none;
+        grid-template-areas:
+            "input  input  input"
+            "in     .      ."
+            "clef   down   llm"
+            "fit    .      out"
+            "output output output";
+    }
+}
+
+.f-input { grid-area: input; }
+.f-clef { grid-area: clef; }
+.f-llm { grid-area: llm; }
+.f-output { grid-area: output; }
+.q-in { grid-area: in; }
+.q-fit { grid-area: fit; }
+.q-down { grid-area: down; }
+.q-out { grid-area: out; }
+
+.n-query:has(input[value="fit"]:checked) {
+    & :is(.q-down, .q-out) {
+        display: none;
+    }
+
+    & .f-llm {
+        opacity: 0.4;
+    }
+}
+
+.n-query:not(:has(input[value="fit"]:checked)) .q-fit {
+    display: none;
+}
+
+.cell {
+    position: relative;
+    padding: 1rem;
+    border: 1px solid var(--edge);
+    border-radius: var(--radius);
+    background: color-mix(in oklch, var(--bg) 40%, transparent);
+
+    & > .mono {
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+}
+
+.cell-model {
+    display: grid;
+    place-content: center;
+    gap: 0.15rem;
+    padding: 0.5rem 0.75rem;
+    text-align: center;
+    border-color: color-mix(in oklch, var(--a1) 50%, transparent);
+
+    & b {
+        font: 800 1.35rem/1 var(--font-display);
+        background: linear-gradient(var(--a1), var(--a2));
+        background-clip: text;
+        color: transparent;
+    }
+
+    & small {
+        font-size: 0.75rem;
+        color: var(--muted);
+    }
+
+    & > .mono {
+        margin-bottom: 0.15rem;
+    }
+
+    &::after {
+        content: "";
+        position: absolute;
+        inset: -1px;
+        border-radius: inherit;
+        box-shadow: 0 0 2.5rem color-mix(in oklch, var(--a1) 45%, transparent);
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    [data-state="loading"] &::after {
+        opacity: 1;
+    }
+
+    .n-query:has(input[value="fit"]:checked) &.f-llm::after {
+        opacity: 0;
+    }
+}
+
+.qwire {
+    --travel: travel;
+    container-type: size;
+    position: relative;
+    align-self: center;
+    height: 1px;
+    background: var(--edge);
+
+    @container node (width < 44rem) {
+        --travel: travel-down;
+        width: 1px;
+        height: 2.5rem;
+        justify-self: center;
+    }
+}
+
+.q-down {
+    --travel: travel-down;
+    width: 1px;
+    height: 100%;
+    justify-self: center;
+
+    @container node (width < 44rem) {
+        --travel: travel;
+        justify-self: stretch;
+        width: auto;
+        height: 1px;
+    }
+}
+
+.packet {
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--a1);
+    box-shadow: 0 0 8px var(--a1);
+    opacity: 0;
+}
+
+.mode {
+    display: flex;
+    gap: 0.2rem;
+    margin: 1rem 0 0.6rem;
+    padding: 0.2rem;
+    border: 0;
+    border-radius: var(--radius);
+    background: color-mix(in oklch, var(--ink) 7%, transparent);
+
+    & label {
+        position: relative;
+        flex: 1;
+        padding: 0.35rem;
+        border-radius: var(--radius);
+        font-size: 0.85rem;
+        text-align: center;
+        color: var(--muted);
+        cursor: pointer;
+        transition: background 0.2s, color 0.2s;
+
+        &:has(:checked) {
+            background: var(--surface);
+            color: var(--ink);
+            box-shadow: 0 1px 3px var(--shadow);
+        }
+
+        &:has(:focus-visible) {
+            outline: 2px solid var(--a1);
+            outline-offset: 2px;
+        }
+    }
+
+    & input {
+        position: absolute;
+        inset: 0;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+    }
+}
+
+.query-text {
+    display: block;
+    width: 100%;
+    height: 16rem;
+    padding: 0.6rem 0.7rem;
+    border: 1px solid var(--edge);
+    border-radius: var(--radius);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.95rem;
+    resize: none;
+
+    @container node (width < 44rem) {
+        height: 8rem;
+    }
+}
+
+.query-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--faint);
+}
+
+.hint-fit {
+    display: none;
+}
+
+.n-query:has(input[value="fit"]:checked) {
+    & .hint-ask {
+        display: none;
+    }
+
+    & .hint-fit {
+        display: inline;
+    }
+}
+
+.honeypot {
+    position: absolute;
+    left: -9999px;
+}
+
+.go {
+    width: 100%;
+    margin-top: 0.6rem;
+    padding: 0.6rem;
+    border: 0;
+    border-radius: var(--radius);
+    background: linear-gradient(100deg, var(--a1), var(--a2));
+    color: var(--on-accent);
+    font: 600 0.95rem var(--font-body);
+    cursor: pointer;
+
+    &:hover {
+        filter: brightness(1.1);
+    }
+
+    [data-state="loading"] & {
+        cursor: progress;
+        filter: saturate(0.5);
+    }
+}
+
+.result {
+    height: 7.5rem;
+    overflow-y: auto;
+    font-size: 0.92rem;
+
+    & > p {
+        margin: 0 0 0.6rem;
+    }
+
+    & ul {
+        display: grid;
+        gap: 0.65rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    & .asked {
+        font-size: 0.8rem;
+        color: var(--faint);
+    }
+
+    & .answer {
+        color: var(--ink);
+    }
+
+    & .lead {
+        margin-top: 0.8rem;
+        font-weight: 600;
+    }
+}
+
+
+.placeholder {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--faint);
+}
+
+.privacy {
+    max-width: 48rem;
+    margin: 1rem 0 0;
+    font-size: 0.8rem;
+    color: var(--faint);
+}
+
+.checks > li {
+    position: relative;
+    padding-left: 1.4rem;
+
+    &::before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        color: var(--a1);
+        font-weight: 700;
+    }
+}
+
+.speak {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--edge);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+
+    &:hover,
+    &[aria-pressed="true"] {
+        border-color: var(--a1);
+        color: var(--ink);
+    }
+
+    &[data-state="loading"] {
+        cursor: progress;
+    }
+
+    &[data-state="failed"] {
+        cursor: default;
+        opacity: 0.6;
+    }
+}
+
+.cell-model > .mono:not(:first-child) {
+    margin-top: 0.9rem;
+}

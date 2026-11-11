@@ -8,3 +8,9 @@ node_modules/
 .parcel-cache/
 .DS_Store
 .aider*
+
+# API binary
+/portfolio-api
+*.env
+portfolio-content.json
+portfolio-extras.json

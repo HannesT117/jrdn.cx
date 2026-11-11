@@ -12,10 +12,24 @@ defaults:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      API_PORT: "8787"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: api/go.mod
+          cache-dependency-path: api/go.mod
+
+      - name: Test API
+        working-directory: api
+        run: |
+          go vet ./...
+          go test -race ./...
 
       - uses: pnpm/action-setup@v4
         name: Install pnpm
@@ -26,8 +40,50 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build
+      - name: Build site
         run: pnpm build
+
+      - name: Build API
+        working-directory: api
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: amd64
+        run: go build -trimpath -ldflags='-s -w' -o ../portfolio-api ./cmd/portfolio-api
+
+      - name: Prepare server files
+        env:
+          CONTENT_JSON: ${{ secrets.CONTENT_JSON }}
+          EXTRAS_JSON: ${{ secrets.EXTRAS_JSON }}
+          OPPER_API_KEY: ${{ secrets.OPPER_API_KEY }}
+          GARMIN_API_KEY: ${{ secrets.GARMIN_API_KEY }}
+          API_ENABLED: ${{ vars.API_ENABLED }}
+          CLIENT_IP_HEADER: ${{ vars.CLIENT_IP_HEADER }}
+          DAILY_CAP_PER_CLIENT: ${{ vars.DAILY_CAP_PER_CLIENT }}
+          DAILY_CAP_GLOBAL: ${{ vars.DAILY_CAP_GLOBAL }}
+        run: |
+          umask 077
+          mkdir server
+          if [ -n "$CONTENT_JSON" ]; then printf '%s' "$CONTENT_JSON" > server/portfolio-content.json; fi
+          if [ -n "$EXTRAS_JSON" ]; then printf '%s' "$EXTRAS_JSON" > server/portfolio-extras.json; fi
+          enabled=false
+          if [ -n "$CONTENT_JSON" ] && [ -n "$OPPER_API_KEY" ] && [ "$API_ENABLED" != "false" ]; then enabled=true; fi
+          put() { if [ -n "$2" ]; then printf '%s=%s\n' "$1" "$2"; fi; }
+          {
+            put ENABLED "$enabled"
+            put PORT "$API_PORT"
+            put ALLOWED_ORIGINS "https://johannestrepesch.de,https://www.johannestrepesch.de"
+            put OPPER_API_KEY "$OPPER_API_KEY"
+            put HMAC_SECRET "$(openssl rand -hex 32)"
+            put GARMIN_API_KEY "$GARMIN_API_KEY"
+            put CLIENT_IP_HEADER "$CLIENT_IP_HEADER"
+            put DAILY_CAP_PER_CLIENT "$DAILY_CAP_PER_CLIENT"
+            put DAILY_CAP_GLOBAL "$DAILY_CAP_GLOBAL"
+          } > server/portfolio-api.env
+          content=../server/portfolio-content.json
+          [ -s server/portfolio-content.json ] || content=internal/content/testdata/content.example.json
+          (cd api && go run ./cmd/portfolio-api -check -env ../server/portfolio-api.env -content "$content" -extras ../server/portfolio-extras.json)
+          echo "Query box enabled: $enabled"
 
       - name: Deploy
         env:
@@ -35,12 +91,31 @@ jobs:
           HOST_KEY: ${{ secrets.HOST_KEY }}
           HOST: ${{ secrets.HOST }}
           USER: ${{ secrets.USER }}
-          SOURCE: "dist/"
-          TARGET: "html/"
         run: |
           mkdir ~/.ssh
           echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           echo "$HOST_KEY" > ~/.ssh/known_hosts
-          rsync -avz -e "ssh -o IdentitiesOnly=yes -i ~/.ssh/deploy_key" $SOURCE $USER@$HOST:$TARGET --delete
-          rm -rf ~/.ssh
+          SSH="ssh -o IdentitiesOnly=yes -i ~/.ssh/deploy_key"
+          rsync -avz -e "$SSH" dist/ $USER@$HOST:html/ --delete
+          rsync -avz -e "$SSH" portfolio-api $USER@$HOST:bin/portfolio-api.new
+          rsync -tvz --perms --chmod=F600 -e "$SSH" server/* $USER@$HOST:etc/
+          cat > remote.sh <<EOF
+          set -eu
+          mv ~/bin/portfolio-api.new ~/bin/portfolio-api
+          mkdir -p ~/etc/services.d
+          cat > ~/etc/services.d/portfolio-api.ini <<'INI'
+          [program:portfolio-api]
+          command=%(ENV_HOME)s/bin/portfolio-api -env %(ENV_HOME)s/etc/portfolio-api.env -content %(ENV_HOME)s/etc/portfolio-content.json -extras %(ENV_HOME)s/etc/portfolio-extras.json
+          autostart=true
+          autorestart=true
+          startsecs=5
+          stopwaitsecs=15
+          INI
+          supervisorctl reread
+          supervisorctl update
+          supervisorctl restart portfolio-api
+          if ! uberspace web backend list | grep -q '^/api '; then uberspace web backend set /api --http --port $API_PORT; fi
+          EOF
+          $SSH $USER@$HOST 'bash -s' < remote.sh
+          rm -rf ~/.ssh server remote.sh
