@@ -15,7 +15,7 @@
         <link rel="preload" href="./assets/fonts/HeptaSlab.woff2" as="font" type="font/woff2" crossorigin />
         <link rel="stylesheet" href="./src/main.css" />
         <script type="module" src="./src/query.js"></script>
-        <script type="module" src="./src/now.js"></script>
+        <script type="module" src="./src/board.js"></script>
     </head>
 
     <body>
@@ -194,29 +194,7 @@
                         </ul>
                     </section>
                 </div>
-                <div class="lane" id="feed-coffee" hidden>
-                    <div class="wire" aria-hidden="true"><span class="mono">fuelled by</span></div>
-                    <section class="node n-coffee" aria-labelledby="coffee-h">
-                        <span class="mono">Coffee</span>
-                        <h2 id="coffee-h">What I brew</h2>
-                        <div data-part="beans" hidden>
-                            <h3 class="sub">Beans</h3>
-                            <ul class="hoppers"></ul>
-                        </div>
-                        <div data-part="brews" hidden>
-                            <h3 class="sub">Brew methods</h3>
-                            <ul class="chips"></ul>
-                        </div>
-                        <div data-part="gear" hidden>
-                            <h3 class="sub">Gear</h3>
-                            <dl class="plate"></dl>
-                        </div>
-                        <div data-part="past-beans" hidden>
-                            <h3 class="sub">Finished</h3>
-                            <ol class="log"></ol>
-                        </div>
-                    </section>
-                </div>
+                <!--board:coffee-->
             </div>
 
             <div class="lane">
@@ -435,91 +413,12 @@
                     <section class="node n-music" aria-labelledby="music-h">
                         <span class="mono">Music</span>
                         <h2 id="music-h">What I sing and play</h2>
-                        <div class="feed" id="feed-music" hidden>
-                            <div data-part="repertoire" hidden>
-                                <h3 class="sub">Repertoire</h3>
-                                <div class="cloud" tabindex="0" aria-label="Repertoire cloud. Arrow keys turn it, plus and minus zoom, Escape zooms out.">
-                                    <canvas aria-hidden="true"></canvas>
-                                    <ol class="crumbs" aria-label="Zoom level"></ol>
-                                    <div class="tools">
-                                        <input list="cloud-titles" placeholder="Find a piece or composer" autocomplete="off" aria-label="Find a piece or composer" />
-                                        <datalist id="cloud-titles"></datalist>
-                                        <button type="button" class="zoom-in" aria-label="Zoom in">+</button>
-                                        <button type="button" class="zoom-out" aria-label="Zoom out">−</button>
-                                    </div>
-                                    <p class="hint" aria-hidden="true">drag to turn · ⌘/Ctrl + scroll to zoom</p>
-                                    <span class="probe" aria-hidden="true"></span>
-                                </div>
-                                <div class="piece empty" aria-live="polite">
-                                    <h3 class="sub">Selected piece</h3>
-                                    <dl class="plate"></dl>
-                                </div>
-                                <nav class="index visually-hidden" aria-labelledby="cloud-index">
-                                    <p id="cloud-index"></p>
-                                    <ul></ul>
-                                </nav>
-                            </div>
-                            <div data-part="stages" hidden>
-                                <h3 class="sub">On stage so far</h3>
-                                <p class="tally"></p>
-                                <ol class="stages"></ol>
-                            </div>
-                            <div data-part="countries" hidden>
-                                <h3 class="sub">Also sung in</h3>
-                                <ul class="chips"></ul>
-                            </div>
-                            <div data-part="music-kit" hidden>
-                                <h3 class="sub">Instruments</h3>
-                                <dl class="plate"></dl>
-                            </div>
-                            <div data-part="gigs" hidden>
-                                <h3 class="sub">Next on stage</h3>
-                                <ol class="gigs"></ol>
-                            </div>
-                        </div>
+                        <!--board:music-->
                     </section>
                 </div>
                 <div class="stack">
-                    <div class="lane" id="feed-sport" hidden>
-                        <div class="wire" aria-hidden="true"><span class="mono">keeps me moving</span></div>
-                        <section class="node n-sport" aria-labelledby="sport-h">
-                            <span class="mono">Sport</span>
-                            <h2 id="sport-h">How I move</h2>
-                            <div data-part="activity" hidden>
-                                <p class="state"></p>
-                                <h3 class="sub">Last 4 days on Garmin</h3>
-                                <div class="track" role="img"></div>
-                                <div class="days" aria-hidden="true"></div>
-                                <ul class="kinds" aria-hidden="true"></ul>
-                            </div>
-                            <div data-part="bikes" hidden>
-                                <h3 class="sub">Bikes</h3>
-                                <dl class="plate"></dl>
-                            </div>
-                            <div data-part="sport-gear" hidden>
-                                <h3 class="sub">Devices</h3>
-                                <dl class="plate"></dl>
-                            </div>
-                        </section>
-                    </div>
-                    <div class="lane" id="feed-reading" hidden>
-                        <div class="wire" aria-hidden="true"><span class="mono">winds down with</span></div>
-                        <section class="node n-reading" aria-labelledby="reading-h">
-                            <span class="mono">Reading</span>
-                            <h2 id="reading-h">What I read and hear</h2>
-                            <div data-part="books" hidden>
-                                <ul class="books"></ul>
-                            </div>
-                            <div data-part="past-books" hidden>
-                                <h3 class="sub">Before that</h3>
-                                <ol class="log"></ol>
-                            </div>
-                            <div data-part="podcasts" hidden>
-                                <h3 class="sub">Podcasts</h3>
-                                <ul class="log"></ul>
-                            </div>
-                        </section>
-                    </div>
+                    <!--board:sport-->
+                    <!--board:reading-->
                 </div>
             </div>
         </main>

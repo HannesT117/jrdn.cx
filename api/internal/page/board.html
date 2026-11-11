@@ -1,0 +1,119 @@
+{{define "plate"}}<dl class="plate">{{range .}}<dt>{{.Kind}}</dt> {{range .Items}}<dd>{{.Name}}{{with .Details}}<small>{{join . " · "}}</small>{{end}}</dd> {{end}}{{end}}</dl>{{end}}
+
+{{define "coffee"}}
+<div class="lane" id="feed-coffee"{{if not .Any}} hidden{{end}}>
+    <div class="wire" aria-hidden="true"><span class="mono">fuelled by</span></div>
+    <section class="node n-coffee" aria-labelledby="coffee-h">
+        <span class="mono">Coffee</span>
+        <h2 id="coffee-h">What I brew</h2>
+        {{if .Slots}}<div>
+            <h3 class="sub">Beans</h3>
+            <ul class="hoppers">{{range .Slots}}{{if .}}<li class="hopper"><b>{{.Name}}</b> <small>{{.Origin}}{{with .Process}} · {{.}}{{end}}</small> <small>{{.Roaster}}</small></li>{{else}}<li class="hopper empty"><small>free slot</small></li>{{end}} {{end}}</ul>
+        </div>{{end}}
+        {{with .Brews}}<div>
+            <h3 class="sub">Brew methods</h3>
+            <ul class="chips">{{range .}}<li>{{.}}</li> {{end}}</ul>
+        </div>{{end}}
+        {{with .Gear}}<div>
+            <h3 class="sub">Gear</h3>
+            {{template "plate" .}}
+        </div>{{end}}
+        {{with .PastBeans}}<div>
+            <h3 class="sub">Finished</h3>
+            <ol class="log">{{range .}}<li class="{{.Hue}}"><span>{{.Text}}</span> <small>{{.Note}}</small></li> {{end}}</ol>
+        </div>{{end}}
+    </section>
+</div>
+{{end}}
+
+{{define "music"}}
+<div class="feed">
+    {{with .Repertoire}}<div>
+        <h3 class="sub">Repertoire</h3>
+        <div class="cloud" tabindex="0" aria-label="Repertoire cloud. Arrow keys turn it, plus and minus zoom, Escape zooms out.">
+            <canvas aria-hidden="true"></canvas>
+            <ol class="crumbs" aria-label="Zoom level"></ol>
+            <div class="tools">
+                <input list="cloud-titles" placeholder="Find a piece or composer" autocomplete="off" aria-label="Find a piece or composer" />
+                <datalist id="cloud-titles"></datalist>
+                <button type="button" class="zoom-in" aria-label="Zoom in">+</button>
+                <button type="button" class="zoom-out" aria-label="Zoom out">−</button>
+            </div>
+            <p class="hint" aria-hidden="true">drag to turn · ⌘/Ctrl + scroll to zoom</p>
+            <span class="probe" aria-hidden="true"></span>
+        </div>
+        <div class="piece empty" aria-live="polite">
+            <h3 class="sub">Selected piece</h3>
+            <dl class="plate"></dl>
+        </div>
+        <nav class="index visually-hidden" aria-labelledby="cloud-index">
+            <p id="cloud-index"></p>
+            <ul></ul>
+        </nav>
+        <script type="application/json" id="repertoire-data">{{.}}</script>
+    </div>{{end}}
+    {{with .Stages}}<div>
+        <h3 class="sub">On stage so far</h3>
+        <p class="tally">{{$.Tally}}</p>
+        <ol class="stages">{{range .}}<li><span><b>{{.Title}}</b>{{with .Place}}, {{.}}{{end}}</span> <small>{{if .Year}}{{.Year}}{{end}}</small>{{with .With}} <small class="with">{{.}}</small>{{end}}</li> {{end}}</ol>
+    </div>{{end}}
+    {{with .Countries}}<div>
+        <h3 class="sub">Also sung in</h3>
+        <ul class="chips">{{range .}}<li>{{.}}</li> {{end}}</ul>
+    </div>{{end}}
+    {{with .Kit}}<div>
+        <h3 class="sub">Instruments</h3>
+        {{template "plate" .}}
+    </div>{{end}}
+    {{with .Gigs}}<div>
+        <h3 class="sub">Next on stage</h3>
+        <ol class="gigs">{{range .}}<li><time datetime="{{.Date}}"><b>{{.Day}}</b>{{.Month}}</time> <div><cite>{{.Program}}</cite> <span>{{.Where}}</span></div></li> {{end}}</ol>
+    </div>{{end}}
+</div>
+{{end}}
+
+{{define "sport"}}
+<div class="lane" id="feed-sport"{{if not .Any}} hidden{{end}}>
+    <div class="wire" aria-hidden="true"><span class="mono">keeps me moving</span></div>
+    <section class="node n-sport" aria-labelledby="sport-h">
+        <span class="mono">Sport</span>
+        <h2 id="sport-h">How I move</h2>
+        {{with .Timeline}}<div>
+            <p class="state s-{{.Level}}">{{.State}}</p>
+            <h3 class="sub">Last {{.Count}} days on Garmin</h3>
+            <svg class="track" viewBox="0 0 {{num .Hours}} 12" preserveAspectRatio="none" role="img" aria-label="{{.Label}}">{{range .Fills}}<rect class="t-{{.Kind}}" x="{{num .X}}" y="{{num .Y}}" width="{{num .W}}" height="{{num .H}}"></rect>{{end}}<rect class="later" x="{{num .Now}}" y="0" width="{{num .Rest}}" height="12"></rect>{{range .Ticks}}<line class="tick" x1="{{num .}}" x2="{{num .}}" y1="0" y2="12"></line>{{end}}<line class="now" x1="{{num .Now}}" x2="{{num .Now}}" y1="0" y2="12"></line></svg>
+            <ol class="days" aria-hidden="true">{{range .Days}}<li>{{.}}</li> {{end}}</ol>
+            <ul class="kinds" aria-hidden="true"><li class="t-run">Run</li> <li class="t-ride">Ride</li> <li class="t-other">Workout</li></ul>
+        </div>{{end}}
+        {{with .Bikes}}<div>
+            <h3 class="sub">Bikes</h3>
+            {{template "plate" .}}
+        </div>{{end}}
+        {{with .Devices}}<div>
+            <h3 class="sub">Devices</h3>
+            {{template "plate" .}}
+        </div>{{end}}
+    </section>
+</div>
+{{end}}
+
+{{define "reading"}}
+<div class="lane" id="feed-reading"{{if not .Any}} hidden{{end}}>
+    <div class="wire" aria-hidden="true"><span class="mono">winds down with</span></div>
+    <section class="node n-reading" aria-labelledby="reading-h">
+        <span class="mono">Reading</span>
+        <h2 id="reading-h">What I read and hear</h2>
+        {{with .Books}}<div>
+            <ul class="books">{{range .}}<li class="{{.Hue}}"><cite>{{.Title}}</cite> <span>{{.Author}}</span></li> {{end}}</ul>
+        </div>{{end}}
+        {{with .PastBooks}}<div>
+            <h3 class="sub">Before that</h3>
+            <ol class="log">{{range .}}<li class="{{.Hue}}"><span>{{.Text}}</span> <small>{{.Note}}</small></li> {{end}}</ol>
+        </div>{{end}}
+        {{with .Podcasts}}<div>
+            <h3 class="sub">Podcasts</h3>
+            <ul class="log">{{range .}}<li class="{{.Hue}}"><span>{{.Text}}</span> <small>{{.Note}}</small></li> {{end}}</ul>
+        </div>{{end}}
+    </section>
+</div>
+{{end}}

@@ -9,11 +9,19 @@ Personal homepage: a static page built with Vite (plain HTML, CSS and a little J
 ```sh
 pnpm install
 pnpm dev                                       # site on http://localhost:5173, proxies /api to :8787
-cd api && go run ./cmd/portfolio-api -env dev.env -content internal/content/testdata/content.example.json -extras path/to/extras.json
+cd api && go run ./cmd/portfolio-api -env dev.env -content internal/content/testdata/content.example.json
 cd api && go test -race ./...
 ```
 
-`dev.env` uses the keys described in [docs/server-setup.md](docs/server-setup.md) (for example `OPPER_API_KEY`, `GARMIN_API_KEY`). Never commit it. Without `-content` or `-extras` the service looks for `portfolio-content.json` and `portfolio-extras.json` next to it; a missing content file disables the query box, a missing extras file means an empty board.
+`dev.env` uses the keys described in [docs/server-setup.md](docs/server-setup.md) (for example `OPPER_API_KEY`, `OPPER_MANAGEMENT_KEY`, `GARMIN_API_KEY`). Never commit it. A missing content file disables the query box.
+
+The board (coffee, music, sport, reading) is rendered by the Go service, so `pnpm dev` shows the page without it. To see the full page:
+
+```sh
+pnpm build && cp dist/index.html dist/page.html
+cd api && go run ./cmd/portfolio-api -env dev.env -extras path/to/extras.json -page ../dist/page.html -out ../dist/index.html
+pnpm preview                                   # in another shell, serves dist/
+```
 
 ## Deploy
 

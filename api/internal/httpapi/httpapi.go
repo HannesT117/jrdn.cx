@@ -77,6 +77,7 @@ func New(cfg Config, c content.Content, m Model, l *limit.Limiter, b Budget) htt
 	h := &handler{cfg: cfg, content: c, model: m, limiter: l, budget: b, texts: map[string]string{}, audio: map[string][]byte{}}
 	mux.HandleFunc("POST /api/query", h.query)
 	mux.HandleFunc("GET /api/speech/{id}", h.speech)
+	mux.HandleFunc("GET /api/whoami", h.whoami)
 	return mux
 }
 
@@ -188,6 +189,18 @@ func (h *handler) clientIP(r *http.Request) string {
 		return r.RemoteAddr
 	}
 	return host
+}
+
+func (h *handler) whoami(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"remote":          r.RemoteAddr,
+		"x-forwarded-for": r.Header.Get("X-Forwarded-For"),
+		"x-real-ip":       r.Header.Get("X-Real-IP"),
+		"forwarded":       r.Header.Get("Forwarded"),
+		"client":          h.clientIP(r),
+	})
 }
 
 func reply(w http.ResponseWriter, status int, kind string) {

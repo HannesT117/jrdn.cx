@@ -9,7 +9,6 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -26,8 +25,6 @@ const (
 	lastYear      = 2100
 	dateLayout    = time.DateOnly
 )
-
-var ErrStale = errors.New("extras file is invalid, serving the last good version")
 
 type Bean struct {
 	Name    string `json:"name"`
@@ -120,42 +117,6 @@ func Load(path string) (Extras, error) {
 		return Extras{}, fmt.Errorf("%s: %w", path, err)
 	}
 	return e.clone(), nil
-}
-
-type Store struct {
-	path string
-
-	mu      sync.Mutex
-	modTime time.Time
-	size    int64
-	loaded  bool
-	current Extras
-}
-
-func NewStore(path string) *Store {
-	return &Store{path: path}
-}
-
-func (s *Store) Get() (Extras, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	info, err := os.Stat(s.path)
-	if errors.Is(err, fs.ErrNotExist) {
-		s.loaded, s.current, s.modTime, s.size = true, Extras{}.clone(), time.Time{}, 0
-		return s.current, nil
-	}
-	if err != nil {
-		return s.current, errors.Join(ErrStale, err)
-	}
-	if s.loaded && info.ModTime().Equal(s.modTime) && info.Size() == s.size {
-		return s.current, nil
-	}
-	e, err := Load(s.path)
-	if err != nil {
-		return s.current, errors.Join(ErrStale, err)
-	}
-	s.loaded, s.current, s.modTime, s.size = true, e, info.ModTime(), info.Size()
-	return e, nil
 }
 
 func (e Extras) validate() error {

@@ -2,7 +2,6 @@ package extras
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -72,40 +71,6 @@ func TestLoadRejectsInvalidFiles(t *testing.T) {
 				t.Fatal("expected an error")
 			}
 		})
-	}
-}
-
-func TestStoreReloadsAfterTheFileChanges(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "extras.json")
-	store := NewStore(path)
-	if got, err := store.Get(); err != nil || len(got.Beans) != 0 {
-		t.Fatalf("got %+v, %v", got, err)
-	}
-	writeExtras(t, path, Extras{Beans: []Bean{{Name: "Lumen", Origin: "Peru", Roaster: "R"}}})
-	later := time.Now().Add(time.Minute)
-	if err := os.Chtimes(path, later, later); err != nil {
-		t.Fatal(err)
-	}
-	if got, err := store.Get(); err != nil || len(got.Beans) != 1 {
-		t.Fatalf("got %+v, %v", got, err)
-	}
-}
-
-func TestStoreKeepsTheLastGoodVersionWhenTheFileBreaks(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "extras.json")
-	writeExtras(t, path, Extras{Beans: []Bean{{Name: "Lumen", Origin: "Peru", Roaster: "R"}}})
-	store := NewStore(path)
-	if _, err := store.Get(); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(path, []byte("{"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	later := time.Now().Add(time.Minute)
-	_ = os.Chtimes(path, later, later)
-	got, err := store.Get()
-	if !errors.Is(err, ErrStale) || len(got.Beans) != 1 {
-		t.Fatalf("got %+v, %v", got, err)
 	}
 }
 

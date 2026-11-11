@@ -68,6 +68,7 @@ jobs:
         run: |
           umask 077
           mkdir server
+          cp dist/index.html server/portfolio-page.html
           if [ -n "$CONTENT_JSON" ]; then printf '%s' "$CONTENT_JSON" > server/portfolio-content.json; fi
           if [ -n "$EXTRAS_JSON" ]; then printf '%s' "$EXTRAS_JSON" > server/portfolio-extras.json; fi
           enabled=false
@@ -104,16 +105,17 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           echo "$HOST_KEY" > ~/.ssh/known_hosts
           SSH="ssh -o IdentitiesOnly=yes -i ~/.ssh/deploy_key"
-          rsync -avz -e "$SSH" dist/ $USER@$HOST:html/ --delete
+          rsync -avz -e "$SSH" --exclude /index.html dist/ $USER@$HOST:html/
           rsync -avz -e "$SSH" portfolio-api $USER@$HOST:bin/portfolio-api.new
           rsync -tvz --perms --chmod=F600 -e "$SSH" server/* $USER@$HOST:etc/
           cat > remote.sh <<EOF
           set -eu
           mv ~/bin/portfolio-api.new ~/bin/portfolio-api
+          touch ~/etc/portfolio-page.html
           mkdir -p ~/etc/services.d
           cat > ~/etc/services.d/portfolio-api.ini <<'INI'
           [program:portfolio-api]
-          command=%(ENV_HOME)s/bin/portfolio-api -env %(ENV_HOME)s/etc/portfolio-api.env -content %(ENV_HOME)s/etc/portfolio-content.json -extras %(ENV_HOME)s/etc/portfolio-extras.json
+          command=%(ENV_HOME)s/bin/portfolio-api -env %(ENV_HOME)s/etc/portfolio-api.env -content %(ENV_HOME)s/etc/portfolio-content.json -extras %(ENV_HOME)s/etc/portfolio-extras.json -page %(ENV_HOME)s/etc/portfolio-page.html -out %(ENV_HOME)s/html/index.html
           autostart=true
           autorestart=true
           startsecs=5
@@ -123,6 +125,10 @@ jobs:
           supervisorctl update
           supervisorctl restart portfolio-api
           if ! uberspace web backend list | grep -q '^/api '; then uberspace web backend set /api --http --port $API_PORT; fi
+          for i in \$(seq 30); do [ ~/html/index.html -nt ~/etc/portfolio-page.html ] && exit 0; sleep 1; done
+          echo "The service did not render ~/html/index.html" >&2
+          exit 1
           EOF
           $SSH $USER@$HOST 'bash -s' < remote.sh
+          rsync -avz -e "$SSH" --delete --exclude /index.html dist/ $USER@$HOST:html/
           rm -rf ~/.ssh server remote.sh

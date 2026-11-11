@@ -6,8 +6,6 @@ export default defineConfig({
         proxy: {
             "/api/query": "http://localhost:8787",
             "/api/speech": "http://localhost:8787",
-            "/api/extras": "http://localhost:8787",
-            "/api/activity": "http://localhost:8787",
         },
     },
     build: {

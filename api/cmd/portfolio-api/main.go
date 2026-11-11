@@ -20,6 +20,7 @@ import (
 	"github.com/HannesT117/johannestrepesch.de/api/internal/httpapi"
 	"github.com/HannesT117/johannestrepesch.de/api/internal/limit"
 	"github.com/HannesT117/johannestrepesch.de/api/internal/model"
+	"github.com/HannesT117/johannestrepesch.de/api/internal/page"
 	"github.com/HannesT117/johannestrepesch.de/api/internal/spend"
 )
 
@@ -28,7 +29,9 @@ func main() {
 	contentPath := flag.String("content", "portfolio-content.json", "path to the content file")
 	extrasPath := flag.String("extras", "portfolio-extras.json", "path to the extras file")
 	check := flag.Bool("check", false, "validate the env, content and extras files and exit")
-	zone := flag.String("tz", "Australia/Sydney", "time zone for dates in the extras file")
+	zone := flag.String("tz", "Australia/Sydney", "time zone for dates on the page")
+	shellPath := flag.String("page", "portfolio-page.html", "path to the built page with board markers")
+	outPath := flag.String("out", "", "where to write the rendered page; empty disables rendering")
 	flag.Parse()
 
 	if *check {
@@ -75,12 +78,6 @@ func main() {
 		slog.Error("unknown time zone, using UTC", "zone", *zone, "err", err)
 		loc = time.UTC
 	}
-	handler.Handle("GET /api/extras", httpapi.NewExtras(extras.NewStore(*extrasPath), loc))
-	var activity httpapi.ActivitySource
-	if cfg.GarminAPIKey != "" {
-		activity = garmin.New(cfg.GarminAPIKey, nil)
-	}
-	handler.Handle("GET /api/activity", httpapi.NewActivity(activity))
 
 	srv := &http.Server{
 		Addr:              ":" + strconv.Itoa(cfg.Port),
@@ -93,6 +90,14 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	if *outPath != "" {
+		var activity page.ActivitySource
+		if cfg.GarminAPIKey != "" {
+			activity = garmin.New(cfg.GarminAPIKey, nil)
+		}
+		publisher := &page.Publisher{Shell: *shellPath, Extras: *extrasPath, Out: *outPath, Activity: activity, Zone: loc}
+		go publisher.Run(ctx, garmin.CacheFor)
+	}
 	go func() {
 		ticker := time.NewTicker(time.Minute)
 		defer ticker.Stop()
