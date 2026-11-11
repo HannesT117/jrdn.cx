@@ -21,7 +21,7 @@ Settings → Secrets and variables → Actions.
 |---|---|
 | `API_ENABLED` | `false` switches the query box off without removing secrets |
 | `ALLOWED_ORIGINS` | Comma-separated origins the query box accepts. Defaults to `johannestrepesch.de`, `jrdn.cx` and `trepesch.dev`, each with and without `www` |
-| `CLIENT_IP_HEADER` | Header in which Uberspace's proxy passes the visitor's IP. Without it every visitor counts against the same per-client cap. `GET /api/whoami` shows what reaches the service for your own request |
+| `CLIENT_IP_HEADER` | Header in which Uberspace's proxy passes the visitor's IP. Set it to `X-Forwarded-For`: Uberspace's proxy appends the visitor's address as the last entry, which is the one the service reads. `X-Real-IP` and `Forwarded` come straight from the visitor and must not be used |
 | `DAILY_BUDGET_USD`, `OPPER_PROJECT` | Daily spend limit in USD and the Opper project it applies to (defaults 2 and `Portfolio`) |
 | `DAILY_CAP_PER_CLIENT`, `DAILY_CAP_GLOBAL` | Model calls per visitor and in total per day (defaults 20 and 300) |
 

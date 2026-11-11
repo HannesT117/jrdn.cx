@@ -409,28 +409,3 @@ func TestSpentBudgetStopsNewSpeechButServesCachedAudio(t *testing.T) {
 		t.Fatalf("speak calls %d", s.model.speakCalls)
 	}
 }
-
-func TestWhoamiEchoesOnlyTheCallersOwnAddressing(t *testing.T) {
-	s := newSetup()
-	s.cfg.ClientIPHeader = "X-Forwarded-For"
-	req := httptest.NewRequest(http.MethodGet, "/api/whoami", nil)
-	req.RemoteAddr = "10.0.0.1:80"
-	req.Header.Set("X-Forwarded-For", "1.2.3.4, 198.51.100.9")
-	req.Header.Set("X-Real-IP", "198.51.100.9")
-	req.Header.Set("Cookie", "secret=1")
-	rec := httptest.NewRecorder()
-	New(s.cfg, testContent, s.model, s.limiter, s.budget).ServeHTTP(rec, req)
-	var got map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-		t.Fatalf("not JSON: %q", rec.Body.String())
-	}
-	want := map[string]string{"remote": "10.0.0.1:80", "x-forwarded-for": "1.2.3.4, 198.51.100.9", "x-real-ip": "198.51.100.9", "forwarded": "", "client": "198.51.100.9"}
-	for k, v := range want {
-		if got[k] != v {
-			t.Errorf("%s = %q, want %q", k, got[k], v)
-		}
-	}
-	if len(got) != len(want) || rec.Header().Get("Cache-Control") != "no-store" {
-		t.Errorf("got %v, cache %q", got, rec.Header().Get("Cache-Control"))
-	}
-}
