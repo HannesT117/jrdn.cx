@@ -22,11 +22,15 @@ type Config struct {
 	Origins        []string
 	ClientIPHeader string
 
+	ManagementKey  string
+	Project        string
+	DailyBudgetUSD float64
+
 	GarminAPIKey string
 }
 
 func Defaults() Config {
-	return Config{Port: DefaultPort, CapPerClient: 20, CapGlobal: 300}
+	return Config{Port: DefaultPort, CapPerClient: 20, CapGlobal: 300, Project: "Portfolio", DailyBudgetUSD: 2}
 }
 
 func Load(path string) (Config, error) {
@@ -57,8 +61,8 @@ func Load(path string) (Config, error) {
 	if err := scanner.Err(); err != nil {
 		return Defaults(), err
 	}
-	if cfg.Enabled && (cfg.OpperKey == "" || cfg.HMACSecret == "" || len(cfg.Origins) == 0) {
-		return Defaults(), errors.New("ENABLED=true needs OPPER_API_KEY, HMAC_SECRET and ALLOWED_ORIGINS")
+	if cfg.Enabled && (cfg.OpperKey == "" || cfg.HMACSecret == "" || len(cfg.Origins) == 0 || cfg.ManagementKey == "") {
+		return Defaults(), errors.New("ENABLED=true needs OPPER_API_KEY, HMAC_SECRET, ALLOWED_ORIGINS and OPPER_MANAGEMENT_KEY")
 	}
 	return cfg, nil
 }
@@ -87,6 +91,15 @@ func (c *Config) set(key, value string) error {
 		}
 	case "CLIENT_IP_HEADER":
 		c.ClientIPHeader = value
+	case "OPPER_MANAGEMENT_KEY":
+		c.ManagementKey = value
+	case "OPPER_PROJECT":
+		c.Project = value
+	case "DAILY_BUDGET_USD":
+		c.DailyBudgetUSD, err = strconv.ParseFloat(value, 64)
+		if err == nil && !(c.DailyBudgetUSD > 0) {
+			err = errors.New("must be greater than zero")
+		}
 	case "GARMIN_API_KEY":
 		c.GarminAPIKey = value
 	default:

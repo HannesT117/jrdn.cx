@@ -48,11 +48,16 @@ type Model interface {
 	Speak(ctx context.Context, text string) ([]byte, error)
 }
 
+type Budget interface {
+	Allow(ctx context.Context, now time.Time) error
+}
+
 type handler struct {
 	cfg     Config
 	content content.Content
 	model   Model
 	limiter *limit.Limiter
+	budget  Budget
 
 	textMu sync.Mutex
 	texts  map[string]string
@@ -67,9 +72,9 @@ type query struct {
 	Website string `json:"website"`
 }
 
-func New(cfg Config, c content.Content, m Model, l *limit.Limiter) http.Handler {
+func New(cfg Config, c content.Content, m Model, l *limit.Limiter, b Budget) http.Handler {
 	mux := http.NewServeMux()
-	h := &handler{cfg: cfg, content: c, model: m, limiter: l, texts: map[string]string{}, audio: map[string][]byte{}}
+	h := &handler{cfg: cfg, content: c, model: m, limiter: l, budget: b, texts: map[string]string{}, audio: map[string][]byte{}}
 	mux.HandleFunc("POST /api/query", h.query)
 	mux.HandleFunc("GET /api/speech/{id}", h.speech)
 	return mux
@@ -94,6 +99,10 @@ func (h *handler) query(w http.ResponseWriter, r *http.Request) {
 	}
 	if q.Website != "" {
 		reply(w, http.StatusOK, policy.KindNoAnswer)
+		return
+	}
+	if !h.withinBudget(r.Context()) {
+		reply(w, http.StatusServiceUnavailable, policy.KindUnavailable)
 		return
 	}
 	if err := h.limiter.Consume(h.clientIP(r), time.Now()); err != nil {
@@ -191,6 +200,17 @@ func write(w http.ResponseWriter, status int, res policy.Response) {
 	_ = json.NewEncoder(w).Encode(res)
 }
 
+func (h *handler) withinBudget(ctx context.Context) bool {
+	if h.budget == nil {
+		return true
+	}
+	if err := h.budget.Allow(ctx, time.Now()); err != nil {
+		slog.Warn("query box resting", "err", err)
+		return false
+	}
+	return true
+}
+
 func (h *handler) speech(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	if !h.cfg.Enabled {
@@ -208,6 +228,10 @@ func (h *handler) speech(w http.ResponseWriter, r *http.Request) {
 	defer h.audioMu.Unlock()
 	audio, cached := h.audio[id]
 	if !cached {
+		if !h.withinBudget(r.Context()) {
+			reply(w, http.StatusServiceUnavailable, policy.KindUnavailable)
+			return
+		}
 		if err := h.limiter.Consume(h.clientIP(r), time.Now()); err != nil {
 			reply(w, http.StatusTooManyRequests, policy.KindUnavailable)
 			return

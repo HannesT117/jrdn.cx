@@ -62,6 +62,17 @@ type setup struct {
 	cfg     Config
 	model   *fakeModel
 	limiter *limit.Limiter
+	budget  Budget
+}
+
+type fakeBudget struct {
+	err   error
+	calls int
+}
+
+func (f *fakeBudget) Allow(context.Context, time.Time) error {
+	f.calls++
+	return f.err
 }
 
 func newSetup() *setup {
@@ -82,7 +93,7 @@ func (s *setup) do(t *testing.T, method, body string, mutate ...func(*http.Reque
 		m(req)
 	}
 	rec := httptest.NewRecorder()
-	New(s.cfg, testContent, s.model, s.limiter).ServeHTTP(rec, req)
+	New(s.cfg, testContent, s.model, s.limiter, s.budget).ServeHTTP(rec, req)
 	var res policy.Response
 	if rec.Header().Get("Content-Type") == "application/json" {
 		if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
@@ -220,7 +231,7 @@ func TestModelCallHasADeadline(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/query", strings.NewReader(`{"mode":"ask","text":"hi"}`))
 	req.Header.Set("Content-Type", "application/json")
-	New(s.cfg, testContent, m, s.limiter).ServeHTTP(rec, req)
+	New(s.cfg, testContent, m, s.limiter, s.budget).ServeHTTP(rec, req)
 	if !ok || time.Until(deadline) > ModelTimeout {
 		t.Fatalf("model context deadline %v (set: %v)", deadline, ok)
 	}
@@ -262,7 +273,7 @@ func TestAskAnswerCarriesItsID(t *testing.T) {
 
 func TestSpeechReadsTheApprovedAnswerOnceAndCachesIt(t *testing.T) {
 	s := newSetup()
-	handler := New(s.cfg, testContent, s.model, s.limiter)
+	handler := New(s.cfg, testContent, s.model, s.limiter, s.budget)
 	for range 3 {
 		rec := s.speech(t, handler, "bread:sourdough")
 		if rec.Code != http.StatusOK || rec.Body.String() != "ID3:Rosa's Bakery has fresh sourdough every morning." {
@@ -279,7 +290,7 @@ func TestSpeechReadsTheApprovedAnswerOnceAndCachesIt(t *testing.T) {
 
 func TestSpeechRejectsUnknownAnswers(t *testing.T) {
 	s := newSetup()
-	handler := New(s.cfg, testContent, s.model, s.limiter)
+	handler := New(s.cfg, testContent, s.model, s.limiter, s.budget)
 	for _, id := range []string{"none", "bread", "bread:cakes", "cakes:sourdough", "nope"} {
 		if rec := s.speech(t, handler, id); rec.Code != http.StatusNotFound {
 			t.Errorf("%s: got %d", id, rec.Code)
@@ -293,7 +304,7 @@ func TestSpeechRejectsUnknownAnswers(t *testing.T) {
 func TestSpeechIsUnavailableWhenDisabled(t *testing.T) {
 	s := newSetup()
 	s.cfg.Enabled = false
-	if rec := s.speech(t, New(s.cfg, testContent, s.model, s.limiter), "bread:sourdough"); rec.Code != http.StatusServiceUnavailable {
+	if rec := s.speech(t, New(s.cfg, testContent, s.model, s.limiter, s.budget), "bread:sourdough"); rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("got %d", rec.Code)
 	}
 }
@@ -301,7 +312,7 @@ func TestSpeechIsUnavailableWhenDisabled(t *testing.T) {
 func TestSpeechCountsOnlyUncachedRequestsAgainstTheLimit(t *testing.T) {
 	s := newSetup()
 	s.limiter = limit.New([]byte("secret"), 1, 100)
-	handler := New(s.cfg, testContent, s.model, s.limiter)
+	handler := New(s.cfg, testContent, s.model, s.limiter, s.budget)
 	if rec := s.speech(t, handler, "bread:sourdough"); rec.Code != http.StatusOK {
 		t.Fatalf("first: %d", rec.Code)
 	}
@@ -313,7 +324,7 @@ func TestSpeechCountsOnlyUncachedRequestsAgainstTheLimit(t *testing.T) {
 func TestSpeechModelFailureIsUnavailable(t *testing.T) {
 	s := newSetup()
 	s.model.err = errors.New("tts down")
-	if rec := s.speech(t, New(s.cfg, testContent, s.model, s.limiter), "bread:sourdough"); rec.Code != http.StatusServiceUnavailable {
+	if rec := s.speech(t, New(s.cfg, testContent, s.model, s.limiter, s.budget), "bread:sourdough"); rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("got %d", rec.Code)
 	}
 }
@@ -328,7 +339,7 @@ func TestAskNeverShowsTheVisitorTextToTheLanguageModel(t *testing.T) {
 
 func TestAskComposesEachSelectionOnce(t *testing.T) {
 	s := newSetup()
-	handler := New(s.cfg, testContent, s.model, s.limiter)
+	handler := New(s.cfg, testContent, s.model, s.limiter, s.budget)
 	for range 3 {
 		req := httptest.NewRequest(http.MethodPost, "/api/query", strings.NewReader(`{"mode":"ask","text":"bread?"}`))
 		req.Header.Set("Content-Type", "application/json")
@@ -361,5 +372,40 @@ func TestAskWithoutAClearTopicSkipsComposing(t *testing.T) {
 	_, res := s.do(t, http.MethodPost, `{"mode":"ask","text":"pizza?"}`)
 	if res.Kind != policy.KindNoAnswer || s.model.completeCalls != 0 {
 		t.Fatalf("got %+v after %d compose calls", res, s.model.completeCalls)
+	}
+}
+
+func TestSpentBudgetRestsTheBoxBeforeAnyModelCall(t *testing.T) {
+	s := newSetup()
+	s.limiter = limit.New([]byte("secret"), 1, 100)
+	budget := &fakeBudget{err: errors.New("daily budget spent")}
+	s.budget = budget
+	rec, res := s.do(t, http.MethodPost, `{"mode":"ask","text":"hi"}`)
+	if rec.Code != http.StatusServiceUnavailable || res.Kind != policy.KindUnavailable || s.model.calls != 0 || budget.calls != 1 {
+		t.Fatalf("got %d %+v, %d model calls, %d budget checks", rec.Code, res, s.model.calls, budget.calls)
+	}
+	budget.err = nil
+	if rec, _ := s.do(t, http.MethodPost, `{"mode":"ask","text":"hi"}`); rec.Code != http.StatusOK {
+		t.Fatalf("a refused request used up the client's cap: %d", rec.Code)
+	}
+}
+
+func TestSpentBudgetStopsNewSpeechButServesCachedAudio(t *testing.T) {
+	s := newSetup()
+	budget := &fakeBudget{}
+	s.budget = budget
+	handler := New(s.cfg, testContent, s.model, s.limiter, s.budget)
+	if rec := s.speech(t, handler, "bread:sourdough"); rec.Code != http.StatusOK {
+		t.Fatalf("first: %d", rec.Code)
+	}
+	budget.err = errors.New("daily budget spent")
+	if rec := s.speech(t, handler, "bread:sourdough"); rec.Code != http.StatusOK {
+		t.Fatalf("cached audio refused: %d", rec.Code)
+	}
+	if rec := s.speech(t, New(s.cfg, testContent, s.model, s.limiter, s.budget), "bread:sourdough"); rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("new speech with a spent budget: %d", rec.Code)
+	}
+	if s.model.speakCalls != 1 {
+		t.Fatalf("speak calls %d", s.model.speakCalls)
 	}
 }

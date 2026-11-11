@@ -38,6 +38,9 @@ DAILY_CAP_GLOBAL=50
 ALLOWED_ORIGINS=https://a.example, https://b.example
 CLIENT_IP_HEADER=X-Forwarded-For
 GARMIN_API_KEY=gk-123
+OPPER_MANAGEMENT_KEY=op-mak-1
+OPPER_PROJECT=Site
+DAILY_BUDGET_USD=1.5
 `))
 	if err != nil {
 		t.Fatal(err)
@@ -45,8 +48,8 @@ GARMIN_API_KEY=gk-123
 	want := Config{
 		Enabled: true, Port: 9000, OpperKey: "op-abc", HMACSecret: "s3cret",
 		CapPerClient: 5, CapGlobal: 50, ClientIPHeader: "X-Forwarded-For",
-		GarminAPIKey: "gk-123",
-		Origins:      []string{"https://a.example", "https://b.example"},
+		GarminAPIKey: "gk-123", ManagementKey: "op-mak-1", Project: "Site", DailyBudgetUSD: 1.5,
+		Origins: []string{"https://a.example", "https://b.example"},
 	}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Fatalf("got %+v", cfg)
@@ -54,7 +57,10 @@ GARMIN_API_KEY=gk-123
 }
 
 func TestEnabledWithoutSecretsIsAnError(t *testing.T) {
-	if _, err := Load(writeEnv(t, "ENABLED=true\nOPPER_API_KEY=op-x\nHMAC_SECRET=x\n")); err == nil {
+	if _, err := Load(writeEnv(t, "ENABLED=true\nOPPER_API_KEY=op-x\nHMAC_SECRET=x\nALLOWED_ORIGINS=https://a.example\n")); err == nil {
+		t.Fatal("expected an error without OPPER_MANAGEMENT_KEY")
+	}
+	if _, err := Load(writeEnv(t, "ENABLED=true\nOPPER_API_KEY=op-x\nHMAC_SECRET=x\nOPPER_MANAGEMENT_KEY=op-mak-1\n")); err == nil {
 		t.Fatal("expected an error without ALLOWED_ORIGINS")
 	}
 	if _, err := Load(writeEnv(t, "ENABLED=true\nHMAC_SECRET=x\nALLOWED_ORIGINS=https://a.example\n")); err == nil {
@@ -66,7 +72,7 @@ func TestEnabledWithoutSecretsIsAnError(t *testing.T) {
 }
 
 func TestMalformedValuesAreErrors(t *testing.T) {
-	for _, body := range []string{"PORT=abc\n", "DAILY_CAP_GLOBAL=-1\n", "ENABLED=yes please\n", "NO_EQUALS_SIGN\n", "UNKNOWN_KEY=1\n"} {
+	for _, body := range []string{"PORT=abc\n", "DAILY_CAP_GLOBAL=-1\n", "DAILY_BUDGET_USD=0\n", "DAILY_BUDGET_USD=two\n", "ENABLED=yes please\n", "NO_EQUALS_SIGN\n", "UNKNOWN_KEY=1\n"} {
 		if _, err := Load(writeEnv(t, body)); err == nil {
 			t.Errorf("expected an error for %q", body)
 		}
@@ -82,6 +88,13 @@ HMAC_SECRET="half
 		t.Fatal(err)
 	}
 	if cfg.GarminAPIKey != "gk-1.2_3" || cfg.OpperKey != "op-abc" || cfg.HMACSecret != `"half` {
+		t.Fatalf("got %+v", cfg)
+	}
+}
+
+func TestBudgetDefaultsToTwoDollarsForThePortfolioProject(t *testing.T) {
+	cfg := Defaults()
+	if cfg.DailyBudgetUSD != 2 || cfg.Project != "Portfolio" {
 		t.Fatalf("got %+v", cfg)
 	}
 }

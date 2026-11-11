@@ -10,6 +10,7 @@ Settings → Secrets and variables → Actions.
 |---|---|
 | `HOST`, `USER`, `SSH_KEY`, `HOST_KEY` | SSH access for the deploy (see 6) |
 | `OPPER_API_KEY` | Query box model calls (see 2) |
+| `OPPER_MANAGEMENT_KEY` | Reads the project's spend for the daily budget (see 2) |
 | `CONTENT_JSON` | Answers, strengths and learning areas for the query box (see 4) |
 | `EXTRAS_JSON` | Coffee, bikes, books, podcasts, repertoire, concerts and gigs (see 5) |
 | `GARMIN_API_KEY` | Sport timeline (see 3) |
@@ -19,16 +20,16 @@ Settings → Secrets and variables → Actions.
 | `API_ENABLED` | `false` switches the query box off without removing secrets |
 | `ALLOWED_ORIGINS` | Comma-separated origins the query box accepts. Defaults to `johannestrepesch.de`, `jrdn.cx` and `trepesch.dev`, each with and without `www` |
 | `CLIENT_IP_HEADER` | Header in which Uberspace's proxy passes the visitor's IP. Without it every visitor counts against the same per-client cap |
+| `DAILY_BUDGET_USD`, `OPPER_PROJECT` | Daily spend limit in USD and the Opper project it applies to (defaults 2 and `Portfolio`) |
 | `DAILY_CAP_PER_CLIENT`, `DAILY_CAP_GLOBAL` | Model calls per visitor and in total per day (defaults 20 and 300) |
 
-The query box is on when `CONTENT_JSON` and `OPPER_API_KEY` exist and `API_ENABLED` is not `false`. The HMAC secret for the rate limiter is generated on every deploy, because the limiter only keeps hashed client keys in memory and resets on restart anyway. The deploy validates the env file, content and extras before it touches the server and stops on invalid data.
+The query box is on when `CONTENT_JSON`, `OPPER_API_KEY` and `OPPER_MANAGEMENT_KEY` exist and `API_ENABLED` is not `false`. The HMAC secret for the rate limiter is generated on every deploy, because the limiter only keeps hashed client keys in memory and resets on restart anyway. The deploy validates the env file, content and extras before it touches the server and stops on invalid data.
 
 ## 2. Opper (once)
 
-1. Create an Opper account, add a card (Clef is a premium model, so the API returns 402 without a card), and create a project API key (`op-…`).
-2. Under **Rules → Spend limits**, set a monthly budget, for example 5 USD. The call that crosses the budget still completes, and every call after it gets a 402.
-3. Store the key: `gh secret set OPPER_API_KEY` (it prompts for the value, so it stays out of your shell history).
-4. The service calls `melious/clef`, an EU route (Finland) with zero data retention. That route has no failover: when Melious is down, the API answers `unavailable`.
+1. Create an Opper account, add a card (Clef is a premium model, so the API returns 402 without a card), and create a project `Portfolio` with an API key (`op-…`). Store it with `gh secret set OPPER_API_KEY` (it prompts for the value).
+2. Create a management key (`op-mak-…`) with only the scopes `usage:read` and `projects:read`, and store it with `gh secret set OPPER_MANAGEMENT_KEY`. The service checks the project's spend for the current UTC day at most once a minute and rests the query box once it reaches `DAILY_BUDGET_USD`. If Opper's usage figure is older than ten minutes, the box rests too. The call that crosses the limit still completes, so the day can end slightly above it.
+3. The service calls `melious/clef`, an EU route (Finland) with zero data retention. That route has no failover: when Melious is down, the API answers `unavailable`.
 
 ## 3. Garmin (once a year)
 

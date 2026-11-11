@@ -56,6 +56,9 @@ jobs:
           CONTENT_JSON: ${{ secrets.CONTENT_JSON }}
           EXTRAS_JSON: ${{ secrets.EXTRAS_JSON }}
           OPPER_API_KEY: ${{ secrets.OPPER_API_KEY }}
+          OPPER_MANAGEMENT_KEY: ${{ secrets.OPPER_MANAGEMENT_KEY }}
+          OPPER_PROJECT: ${{ vars.OPPER_PROJECT }}
+          DAILY_BUDGET_USD: ${{ vars.DAILY_BUDGET_USD }}
           GARMIN_API_KEY: ${{ secrets.GARMIN_API_KEY }}
           API_ENABLED: ${{ vars.API_ENABLED }}
           ALLOWED_ORIGINS: ${{ vars.ALLOWED_ORIGINS || 'https://johannestrepesch.de,https://www.johannestrepesch.de,https://jrdn.cx,https://www.jrdn.cx,https://trepesch.dev,https://www.trepesch.dev' }}
@@ -68,13 +71,16 @@ jobs:
           if [ -n "$CONTENT_JSON" ]; then printf '%s' "$CONTENT_JSON" > server/portfolio-content.json; fi
           if [ -n "$EXTRAS_JSON" ]; then printf '%s' "$EXTRAS_JSON" > server/portfolio-extras.json; fi
           enabled=false
-          if [ -n "$CONTENT_JSON" ] && [ -n "$OPPER_API_KEY" ] && [ "$API_ENABLED" != "false" ]; then enabled=true; fi
+          if [ -n "$CONTENT_JSON" ] && [ -n "$OPPER_API_KEY" ] && [ -n "$OPPER_MANAGEMENT_KEY" ] && [ "$API_ENABLED" != "false" ]; then enabled=true; fi
           put() { if [ -n "$2" ]; then printf '%s=%s\n' "$1" "$2"; fi; }
           {
             put ENABLED "$enabled"
             put PORT "$API_PORT"
             put ALLOWED_ORIGINS "$ALLOWED_ORIGINS"
             put OPPER_API_KEY "$OPPER_API_KEY"
+            put OPPER_MANAGEMENT_KEY "$OPPER_MANAGEMENT_KEY"
+            put OPPER_PROJECT "$OPPER_PROJECT"
+            put DAILY_BUDGET_USD "$DAILY_BUDGET_USD"
             put HMAC_SECRET "$(openssl rand -hex 32)"
             put GARMIN_API_KEY "$GARMIN_API_KEY"
             put CLIENT_IP_HEADER "$CLIENT_IP_HEADER"

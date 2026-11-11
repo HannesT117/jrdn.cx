@@ -20,6 +20,7 @@ import (
 	"github.com/HannesT117/johannestrepesch.de/api/internal/httpapi"
 	"github.com/HannesT117/johannestrepesch.de/api/internal/limit"
 	"github.com/HannesT117/johannestrepesch.de/api/internal/model"
+	"github.com/HannesT117/johannestrepesch.de/api/internal/spend"
 )
 
 func main() {
@@ -57,12 +58,17 @@ func main() {
 	}
 
 	limiter := limit.New([]byte(cfg.HMACSecret), cfg.CapPerClient, cfg.CapGlobal)
+	var budget httpapi.Budget
+	if cfg.ManagementKey != "" {
+		budget = spend.New(cfg.ManagementKey, cfg.Project, cfg.DailyBudgetUSD, nil)
+	}
 	handler := http.NewServeMux()
 	handler.Handle("/api/", httpapi.New(
 		httpapi.Config{Enabled: cfg.Enabled, Origins: cfg.Origins, ClientIPHeader: cfg.ClientIPHeader},
 		c,
 		model.NewClient(cfg.OpperKey),
 		limiter,
+		budget,
 	))
 	loc, err := time.LoadLocation(*zone)
 	if err != nil {
